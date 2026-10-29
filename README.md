@@ -1,36 +1,39 @@
 # TTL-LAMa CLI
 
-![Python](https://img.shields.io/badge/python-3.12+-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+English | [Français](docs/README.fr.md)
+
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Typer](https://img.shields.io/badge/CLI-Typer-009688)](https://typer.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](../LICENSE)
 
 [![Logo](./docs/img/logo_300ppp.png)](./docs/img/logo_300ppp.png)
 
-`ttlama` est l’interface en ligne de commande du projet TTL-LAMa (Time-to-Live Lease Administration Manager). Elle a vocation à permettre aux utilisateurs et aux administrateurs d’interagir avec une instance TTL-LAMa via son API HTTP, sans dépendre de son interface Web.
+`ttlama` is the command-line interface for TTL-LAMa (Time-to-Live Lease Administration Manager). It lets users and administrators interact with a TTL-LAMa instance through its HTTP API, without relying on the web interface.
 
-Le paquet est autonome dans le dépôt `cli/` et peut évoluer indépendamment du serveur. TTL-LAMa gère des accès réseau temporaires sous forme de baux (*leases*) ; la CLI n’est ni un client VPN ni un outil général d’administration réseau.
+The CLI lives in the `cli/` directory and can evolve independently of the server. TTL-LAMa manages temporary network access as leases; the CLI is neither a VPN client nor a general-purpose network administration tool.
 
-## État du projet
+## Project status
 
-La CLI est en développement. À ce jour, les commandes disponibles permettent de configurer l’adresse du serveur et de s’authentifier avec un compte interne. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
+The CLI is under development. Currently available commands let you configure the server address and authenticate with an internal account. Commands marked as planned below are targets for future implementation, not commands that can be used today.
 
-| Groupe | Commandes disponibles | Commandes prévues |
+| Group | Available commands | Planned commands |
 | --- | --- | --- |
 | `config` | `set-server` | — |
 | `auth` | `login internal` | `login external`, `login oidc`, `logout`, `status` |
-| `user` | — | consultation de l’utilisateur, des appareils, des baux et des profils qui lui sont accessibles |
+| `user` | — | View the user, their devices and leases, and the profiles available to them |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
 | `admin users` | — | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` |
 | `admin devices` | — | `list`, `get`, `update`, `block`, `delete` |
 | `admin leases` | — | `list`, `get`, `revoke` |
 | `admin profiles` | — | `list`, `get`, `create`, `update`, `delete` |
 
-Les commandes prévues reprendront les ressources et opérations exposées par l’[API v1](../src/api/v1/README.md). Leurs options de filtrage et leurs formats de fichiers seront définis au fur et à mesure de leur implémentation.
+Planned commands will cover the resources and operations exposed by the [v1 API](../src/api/v1/README.md) (see the github.com/remiv1/TTL-LAMa repository). Their filtering options and file formats will be defined as they are implemented.
 
-## Installation et utilisation
+## Installation and usage
 
-A l'avenir, le paquet sera publié sur PyPI pour une installation simplifiée via `pip install ttlama-cli`.
+The package is not yet published on PyPI. Once it is, it will be installable with `pip install ttlama-cli`.
 
-Prérequis : Python 3.12 ou supérieur et une instance TTL-LAMa accessible en HTTP(S). Depuis le dossier `cli/`, installez le paquet dans un environnement virtuel :
+Requirements: Python 3.12 or later and an instance of TTL-LAMa accessible over HTTP(S). From the `cli/` directory, install the package in a virtual environment:
 
 ```bash
 python -m venv .venv
@@ -39,65 +42,50 @@ python -m pip install -e .
 ttlama --help
 ```
 
-Configurez l’instance à joindre. L’URL contient le schéma et l’hôte ; le port se fournit séparément :
+Configure the instance. The URL includes the scheme and host; provide the port separately:
 
 ```bash
 ttlama config set-server http://localhost --port 8080
 ```
 
-Connectez-vous avec un compte interne. Le mot de passe est demandé de façon masquée et n’est pas un argument de la commande :
+Sign in with an internal account. The password is prompted for securely and is not passed as a command argument:
 
 ```bash
 ttlama auth login internal --user admin
 ```
 
-La commande effectue l’échange CSRF requis par l’API, puis enregistre le jeton d’accès retourné par le serveur. Elle n’affiche ni le mot de passe ni le jeton.
+The command performs the CSRF exchange required by the API, then stores the access token returned by the server. It does not display the password or token.
 
-## Configuration et identifiants
+## Configuration and credentials
 
-L’adresse et le port de l’instance sont enregistrés dans `config.json`, sous le répertoire de configuration utilisateur déterminé par `platformdirs` (par exemple le répertoire XDG sous Linux). L’URL doit utiliser `http` ou `https`, sans identifiants, paramètres de requête ni fragment.
+The instance address and port are stored in `config.json` under the user configuration directory determined by `platformdirs` (for example, the XDG directory on Linux). The URL must use `http` or `https` and must not contain credentials, query parameters, or a fragment.
 
-Le jeton d’accès est enregistré dans le trousseau système via `keyring`. Son entrée est associée à l’instance et au nom d’utilisateur. Il n’est donc pas écrit dans le fichier de configuration JSON.
+The access token is stored in the system keyring through `keyring`. Its entry is associated with the instance and username, so the token is not written to the JSON configuration file.
 
-## Organisation du code
+## Code layout
 
-- `src/ttlama_cli/cli.py` déclare la commande `ttlama` et ses groupes.
-- `src/ttlama_cli/commands/` contient les commandes Typer, notamment `auth` et `config`.
-- `src/ttlama_cli/api_client.py` effectue les appels HTTP à l’API.
-- `src/ttlama_cli/config_store.py` valide et persiste l’instance configurée.
-- `src/ttlama_cli/token_store.py` encapsule l’accès au trousseau système.
-- `tests/` contient les tests unitaires et les tests d’intégration.
+- `src/ttlama_cli/cli.py` defines the `ttlama` command and its groups.
+- `src/ttlama_cli/commands/` contains the Typer commands, including `auth` and `config`.
+- `src/ttlama_cli/api_client.py` makes HTTP requests to the API.
+- `src/ttlama_cli/config_store.py` validates and persists the configured instance.
+- `src/ttlama_cli/token_store.py` encapsulates access to the system keyring.
+- `tests/` contains the unit and integration tests.
 
-## Tests unitaires
+## Unit tests
 
-Installez les dépendances de test, puis lancez la suite depuis `cli/` :
-
-```bash
-python -m pip install -e '.[test]'
-python -m pytest tests/
-```
-
-## Tests d’intégration
-
-Le lanceur démarre une instance éphémère depuis `ghcr.io/remiv1/ttl-lama:latest`, puis exécute les commandes d’authentification contre le vrai serveur :
-
-```bash
-./scripts/test-integration.sh
-```
-
-Le lanceur nécessite Podman Compose et un accès à l’image GHCR. Il vérifie le succès d’une authentification interne et le rejet d’un mot de passe incorrect. Le serveur de test utilise des identifiants dédiés, le trousseau est remplacé par un stockage mémoire et aucun volume de l’hôte n’est monté. Les conteneurs du projet Compose sont arrêtés et supprimés à la fin du script.
-
-Les tests unitaires s’exécutent localement depuis ce dossier après installation du paquet :
+Install the test dependencies, then run the test suite from `cli/`:
 
 ```bash
 python -m pip install -e '.[test]'
 python -m pytest tests/
 ```
 
-Les tests d’intégration démarrent une instance éphémère depuis `ghcr.io/remiv1/ttl-lama:latest`, puis exécutent les commandes d’authentification contre cette instance :
+## Integration tests
+
+The launcher starts an ephemeral instance from `ghcr.io/remiv1/ttl-lama:latest`, then runs authentication commands against the real server:
 
 ```bash
 ./scripts/test-integration.sh
 ```
 
-Le lanceur nécessite Podman Compose et l’accès à l’image GHCR. Il ne monte aucun volume de l’hôte ; les identifiants sont réservés au serveur de test et le trousseau est remplacé par un stockage mémoire.
+The launcher requires Podman Compose and access to the GHCR image. It checks that internal authentication succeeds and an incorrect password is rejected. The test server uses dedicated credentials, the keyring is replaced with in-memory storage, and no host volumes are mounted. The Compose project containers are stopped and removed when the script finishes.
