@@ -42,7 +42,6 @@ def login_internal(
         save_access_token(
             server_url,
             server_port,
-            user,
             token,
         )
     except (APIError, AuthenticationError, TokenStorageError) as error:

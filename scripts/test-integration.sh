@@ -84,6 +84,7 @@ result() {
 }
 
 prepare_environment() {
+  printf "\n"
   if [[ ! -f "$COMPOSE_FILE" ]]; then
     printf "${RED}%s${RESET}\n" "Compose file $COMPOSE_FILE not found."
     exit 1
@@ -102,11 +103,23 @@ prepare_environment() {
   fi
 }
 
+validate_environment() {
+  printf "\n"
+  while ! curl -s "http://127.0.0.1:58080/health" &> /dev/null; do
+    printf "${YELLOW}%s${RESET}\n" "Waiting for server to be ready..."
+    sleep 2
+  done
+}
+
+
 launch_tests() {
   # Launch only the test container with the requested pytest selection.
   local -a pytest_args=("-v" "--color=yes" "-ra" "-p" "no:cacheprovider")
   local -a compose_args=(run --rm --no-deps)
   pytest_args+=("${TEST_SELECTORS[@]}")
+  printf "\n"
+  printf "${GREEN}%s${RESET}\n" "Building CLI tests image..."
+  podman compose -f "$COMPOSE_FILE" build cli-tests >> "$LOG_FILE" 2>&1
   podman compose -f "$COMPOSE_FILE" "${compose_args[@]}" cli-tests \
     python -m pytest "${pytest_args[@]}"
   code=$?
@@ -135,6 +148,10 @@ trap cleanup EXIT
 printf "\n"
 section "${GREEN}" "Preparing environment"
 result "prepare_environment" "Environment prepared successfully" "Failed to prepare environment"
+printf "\n"
+
+section "${GREEN}" "Validating environment"
+result "validate_environment" "Environment validated successfully" "Failed to validate environment"
 printf "\n"
 
 section "${RED}" "Running CLI tests"

@@ -3,6 +3,11 @@
 This module provides functions to save and load the server URL configuration for the
 TTL-LAMa CLI.
 
+.. functions::
+    - `config_file`: Return the path to the TTL-LAMa CLI configuration file.
+    - `save_server_config`: Save the server URL and port to the configuration file.
+    - `load_server_config`: Load the server URL and port from the configuration file.
+
 .. module_author:: Rémi Verschuur <rverschuur@audit-io.fr>
 .. version:: 1.0.0
 """
@@ -20,11 +25,19 @@ _INVALID_FILE_ERROR = "TTL-LAMa config file is invalid."
 
 
 def config_file() -> Path:
-    """Return the path to the TTL-LAMa CLI configuration file."""
+    """Return the path to the TTL-LAMa CLI configuration file.
+    
+    :return: Path to the configuration file.
+    :rtype: Path
+    """
     return user_config_path("ttlama", appauthor=False) / "config.json"
 
 def _validate_server_url(url: str) -> None:
-    """Validate the server URL."""
+    """Validate the server URL.
+    
+    :param url: The server URL to validate.
+    :type url: str
+    """
     parsed = urlsplit(url)
     if parsed.scheme not in {"http", "https"}:
         raise ValueError("Put a valid HTTP or HTTPS URL.")
@@ -55,7 +68,13 @@ def _check_data(data: Any) -> tuple[str, int]:
     return server_url, server_port
 
 def save_server_config(url: str, port: int) -> None:
-    """Save the server URL and port to the TTL-LAMa CLI configuration file."""
+    """Save the server URL and port to the TTL-LAMa CLI configuration file.
+
+    :param url: The server URL to save.
+    :type url: str
+    :param port: The server port to save.
+    :type port: int
+    """
     _validate_server_url(url)
 
     path = config_file()
@@ -73,7 +92,11 @@ def save_server_config(url: str, port: int) -> None:
     )
 
 def load_server_config() -> tuple[str, int]:
-    """Load the server URL and port from the TTL-LAMa CLI configuration file."""
+    """Load the server URL and port from the TTL-LAMa CLI configuration file.
+
+    :return: A tuple containing the server URL and port.
+    :rtype: tuple[str, int]
+    """
     path = config_file()
     if not path.exists():
         raise FileNotFoundError("TTL-LAMa config file does not exist.")

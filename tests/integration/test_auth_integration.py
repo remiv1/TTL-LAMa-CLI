@@ -1,4 +1,4 @@
-"""Tests d’authentification de la CLI contre une instance réelle."""
+"""Authentication tests of the CLI against a real instance."""
 
 from __future__ import annotations
 
@@ -20,13 +20,13 @@ _REQUIRED_ENVIRONMENT = (
 )
 pytestmark = pytest.mark.skipif(
     not all(os.environ.get(name) for name in _REQUIRED_ENVIRONMENT),
-    reason="Les tests d’intégration nécessitent leur environnement Compose.",
+    reason="Integration tests require their Compose environment.",
 )
 
 
 @pytest.fixture
 def memory_keyring(monkeypatch: pytest.MonkeyPatch) -> dict[tuple[str, str], str]:
-    """Remplacer le trousseau du système par un stockage mémoire isolé."""
+    """Replace the system keyring with an isolated in-memory storage."""
     tokens: dict[tuple[str, str], str] = {}
 
     def set_password(service: str, username: str, password: str) -> None:
@@ -43,7 +43,7 @@ def memory_keyring(monkeypatch: pytest.MonkeyPatch) -> dict[tuple[str, str], str
 
 @pytest.fixture
 def server_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tuple[str, int, str, str]:
-    """Configurer la CLI pour le serveur éphémère et un dossier XDG temporaire."""
+    """Configure the CLI for the ephemeral server and a temporary XDG folder."""
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
     return (
         os.environ["TTLAMA_TEST_SERVER_URL"],
@@ -54,7 +54,7 @@ def server_config(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> tuple[str,
 
 
 def configure_server(url: str, port: int) -> None:
-    """Enregistrer l’URL et le port du serveur via la commande publique."""
+    """Register the server URL and port via the public command."""
     result = CliRunner().invoke(
         app,
         ["config", "set-server", url, "--port", str(port)],
@@ -66,7 +66,7 @@ def test_internal_login_against_server_saves_token(
     memory_keyring: dict[tuple[str, str], str], # pylint: disable=W0621
     server_config: tuple[str, int, str, str],   # pylint: disable=W0621
 ) -> None:
-    """Un login réel enregistre le jeton sans l’afficher."""
+    """A real login saves the token without displaying it."""
     server_url, server_port, username, password = server_config
     configure_server(server_url, server_port)
 
@@ -80,7 +80,7 @@ def test_internal_login_against_server_saves_token(
     assert "Connexion réussie" in result.output
     assert password not in result.output
 
-    token = token_store.get_access_token(server_url, server_port, username)
+    token = token_store.get_access_token(server_url, server_port)
     assert token
     assert token not in result.output
     assert memory_keyring
@@ -90,7 +90,7 @@ def test_internal_login_against_server_rejects_bad_password(
     memory_keyring: dict[tuple[str, str], str], # pylint: disable=W0621
     server_config: tuple[str, int, str, str],   # pylint: disable=W0621
 ) -> None:
-    """Un mauvais mot de passe échoue proprement sans stocker de jeton."""
+    """A bad password fails cleanly without storing a token."""
     server_url, server_port, username, _ = server_config
     configure_server(server_url, server_port)
     wrong_password = "invalid-integration-password"
@@ -105,5 +105,5 @@ def test_internal_login_against_server_rejects_bad_password(
     assert "incorrect" in result.output.lower()
     assert "Traceback" not in result.output
     assert wrong_password not in result.output
-    assert token_store.get_access_token(server_url, server_port, username) is None
+    assert token_store.get_access_token(server_url, server_port) is None
     assert memory_keyring == {}

@@ -42,7 +42,6 @@ def test_internal_login_saves_token_without_printing_secrets(
     save_token.assert_called_once_with(
         "https://server.example",
         8443,
-        "admin",
         token,
     )
 

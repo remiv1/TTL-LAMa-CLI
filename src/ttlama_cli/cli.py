@@ -1,5 +1,11 @@
 """CLI to administrate TTL-LAMa.
 
+.. functions::
+    - `main`: Entrypoint for the TTL-LAMa CLI.
+
+.. cli::
+    - `callback`: Callback for the TTL-LAMa CLI.
+
 .. module_author:: Rémi Verschuur <rverschuur@audit-io.fr>
 .. version:: 0.1.0
 """
@@ -10,6 +16,7 @@ import typer
 
 from .commands.auth import app as auth_app
 from .commands.config import app as config_app
+from .commands.admin import app as admin_app
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -17,6 +24,7 @@ app = typer.Typer(
 )
 app.add_typer(auth_app, name="auth")
 app.add_typer(config_app, name="config")
+app.add_typer(admin_app, name="admin")
 
 
 def main() -> None:

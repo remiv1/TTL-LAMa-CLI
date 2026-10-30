@@ -8,6 +8,8 @@ services:
       TTL_LAMA_ADMIN_PASSWORD: cli-integration-password
       TTL_LAMA_SESSION_COOKIE_SECURE: "false"
       TTL_LAMA_ENFORCE_SECURE_CONNECTION: "false"
+    ports:
+      - "58080:8080"
     healthcheck:
       test:
         [

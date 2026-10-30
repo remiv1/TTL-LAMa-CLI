@@ -20,3 +20,23 @@ def test_internal_login_help_is_available() -> None:
 
     assert result.exit_code == 0
     assert "--user" in result.output
+
+def test_admin_help_is_available() -> None:
+    """Test that the help option is available for the admin command."""
+    result = CliRunner().invoke(
+        app,
+        ["admin", "--help"],
+    )
+
+    assert result.exit_code == 0
+    assert "Usage:" in result.output
+
+def test_admin_users_help_is_available() -> None:
+    """Test that the help option is available for the admin users command."""
+    result = CliRunner().invoke(
+        app,
+        ["admin", "users", "--help"],
+    )
+
+    assert result.exit_code == 0
+    assert "Usage:" in result.output

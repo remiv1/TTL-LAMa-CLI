@@ -24,7 +24,13 @@ def config_server(
         help="Server port for TTL-LAMa CLI configuration.",
     )
 ) -> None:
-    """Configure the server for TTL-LAMa CLI."""
+    """Configure the server for TTL-LAMa CLI.
+
+    :param url: Server URL for TTL-LAMa CLI configuration.
+    :type url: str
+    :param port: Server port for TTL-LAMa CLI configuration.
+    :type port: int
+    """
     typer.echo(f"Configuring server with URL: {url}:{port}")
     save_server_config(url, port)
     typer.echo("Server configuration saved.")
