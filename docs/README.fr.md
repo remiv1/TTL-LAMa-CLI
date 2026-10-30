@@ -22,7 +22,7 @@ La CLI est en développement. À ce jour, les commandes disponibles permettent d
 | `auth` | `login internal` | `login external`, `login oidc`, `logout`, `status` |
 | `user` | — | consultation de l’utilisateur, des appareils, des baux et des profils qui lui sont accessibles |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
-| `admin users` | — | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` |
+| `admin users` | `list`, `get`, `create`, `update`, `delete` | `assign`, `unassign` |
 | `admin devices` | — | `list`, `get`, `update`, `block`, `delete` |
 | `admin leases` | — | `list`, `get`, `revoke` |
 | `admin profiles` | — | `list`, `get`, `create`, `update`, `delete` |
@@ -104,3 +104,86 @@ Les tests d’intégration démarrent une instance éphémère depuis `ghcr.io/r
 ```
 
 Le lanceur nécessite Podman Compose et l’accès à l’image GHCR. Il ne monte aucun volume de l’hôte ; les identifiants sont réservés au serveur de test et le trousseau est remplacé par un stockage mémoire.
+
+## Arbre des commandes
+
+Voici l’arborescence cible des commandes disponibles avec `ttlama` :
+
+```md
+ttlama
+ ├── auth → **Authentification** → **_Qui suis-je ?_**
+ │    ├── login
+ │    │     ├── internal --user <username>
+ │    │     ├── external --user <username>
+ │    │     └── oidc --user <username>
+ │    │
+ │    ├── logout
+ │    └── status
+ │
+ ├── user → **Utilisation** → **_Qu'est-ce que j'utilise ?_**
+ │    ├── get
+ │    │
+ │    ├── devices
+ │    │     ├── list
+ │    │     ├── get --id <device_id>
+ │    │     ├── add --file <file_path>
+ │    │     └── delete --id <device_id>
+ │    │
+ │    ├── leases
+ │    │     ├── list
+ │    │     ├── get --id <lease_id>
+ │    │     ├── create --file <file_path>
+ │    │     └── revoke --id <lease_id>
+ │    │
+ │    └── profiles
+ │          ├── list
+ │          └── get --id <profile_id>
+ │
+ ├── global-config → **Configuration** → **_Comment l'instance fonctionne ?_**
+ │    ├── get [--output <file_path> | none]
+ │    ├── diff --file <file_path> [--colored-diff | none]
+ │    ├── validate --file <file_path>
+ │    └── apply --file <file_path> [--dry-run | none]
+ │
+ └── admin → **Administration** → **_Qui a doit à quoi / Quel est l'état administré ?_**
+      │
+      ├── users
+      │     ├── list [--device <device_id> &/| --lease <lease_id> &/| --profile <profile_id> | none]
+      │     ├── get --user <user_id>
+      │     ├── create --file <file_path>
+      │     ├── update --user <user_id> --file <file_path>
+      │     ├── delete --user <user_id>
+      │     ├── assign --user <user_id> --profile <profile_id>
+      │     └── unassign --user <user_id> --profile <profile_id>
+      │
+      ├── devices
+      │     ├── list [--lease <lease_id> | --profile <profile_id> | none]
+      │     ├── get --device <device_id>
+      │     ├── update --device <device_id> --file <file_path>
+      │     ├── block --device <device_id>
+      │     └── delete --device <device_id>
+      │
+      ├── leases
+      │     ├── list [
+      │     │         --user <user_id>
+      │     │     &/| --device <device_id>
+      │     │     &/| --profile <profile_id>
+      │     │     &/| --status <status>
+      │     │     | none
+      │     │     ]
+      │     ├── get --lease <lease_id>
+      │     └── revoke --lease <lease_id>
+      │
+      └── profiles
+            ├── list [--user <user_id> &/| --device <device_id> &/| --lease <lease_id> | none]
+            ├── get --profile <profile_id> [--output <file_path> | none]
+            ├── create --file <file_path>
+            ├── update --profile <profile_id> --file <file_path>
+            └── delete --profile <profile_id>
+```
+
+### Fichiers des commandes admin users
+
+`ttlama admin users create --file` et `update --user <user_id> --file` acceptent des objets JSON ou YAML encodés en UTF-8. La création exige `username` ; `email`, `enabled`, `is_admin` et `password` sont facultatifs. Pour une mise à jour, le fichier contient uniquement les champs à modifier ; utilisez `email: null` pour effacer l’adresse e-mail. Le mot de passe présent dans le fichier est envoyé à l’API, mais n’est jamais affiché par la CLI.
+
+La sortie JSON ou YAML de `ttlama admin users get <user_id> --json` ou `--yaml` est un objet plat ne contenant que les champs modifiables renvoyés par l’API ; elle peut être passée directement à `update --user <user_id> --file`. La sortie de `list` reste une collection et ne constitue pas un corps de mise à jour. Les mots de passe ne sont jamais renvoyés ; ajoutez manuellement un champ `password` pour en modifier un.

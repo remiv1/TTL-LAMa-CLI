@@ -10,6 +10,8 @@
 .. module_author:: Rémi Verschuur <rverschuur@audit-io.fr>
 .. version:: 1.0.0
 """
+from typer import Exit, echo
+
 class TTLAMaCLIException(Exception):
     """Base exception for TTL-LAMa CLI.
     
@@ -69,3 +71,8 @@ class APIError(TTLAMaCLIException):
     def __init__(self, message: str | None = None) -> None:
         self.message = message or "API request error."
         super().__init__(self.message)
+
+def handle_api_error(e: Exception) -> None:
+    """Handle API errors by printing an error message and exiting."""
+    echo(f"Error requesting API: {e}")
+    raise Exit(code=1) from e

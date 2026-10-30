@@ -1,10 +1,34 @@
-"""User management commands for the TTL-LAMa CLI."""
+"""User management commands for the TTL-LAMa CLI.
+
+.. CLI:: `ttlama admin **users**`
+    - `list`: list all users.
+        - `--device`: filter users by device ID.
+        - `--lease`: filter users by lease ID.
+        - `--profile`: filter users by profile ID.
+        - `--json`: output the list of users in JSON format.
+        - `--yaml`: output the list of users in YAML format.
+    - `get`: retrieve a specific user by ID.
+        - `--json`: output the user data in JSON format.
+        - `--yaml`: output the user data in YAML format.
+    - `create`: create a new user.
+        - `--file`: path to a JSON or YAML file containing the user data.
+    - `update`: update an existing user.
+        - `--user`: ID of the user to update.
+        - `--file`: path to a JSON or YAML file containing the user data.
+    - `delete`: delete a user.
+        - `--user`: ID of the user to delete.
+
+.. module_author:: Rémi Verschuur <rverschuur@audit-io.fr>
+.. version:: 1.0.0
+"""
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import cast
 
 import typer
+from yaml import YAMLError
 from rich.console import Console
 from rich.table import Table
 
@@ -12,12 +36,17 @@ from ...config_store import load_server_config
 from ...token_store import get_access_token
 from ...api_client import request_api
 from ...objects import HTTPMethod, SpecificRequest, ServerParameters
-from ...exc import AuthorizationError, APIError, AuthenticationError
+from ...objects.requests import JSONValue
+from ...exc import AuthorizationError, APIError, AuthenticationError, handle_api_error
+from ...utils import json_to_yaml, yaml_to_json
 
 users_app = typer.Typer(
     no_args_is_help=True,
     help="User management commands for the TTL-LAMa CLI.",
 )
+
+EDITABLE_USER_FIELDS = {"username", "email", "enabled", "is_admin"}
+
 
 def _get_server_and_token() -> tuple[str, int, str]:
     """Retrieve the server URL, port, and access token.
@@ -42,6 +71,31 @@ def _get_server_and_token() -> tuple[str, int, str]:
         raise typer.Exit(code=1) from e
 
     return url, port, token
+
+
+def _load_user_file(file_path: Path) -> dict[str, JSONValue]:
+    """Load a user request body from a JSON or YAML file."""
+    try:
+        contents = file_path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as error:
+        typer.echo(f"Error reading user data file '{file_path}': {error}")
+        raise typer.Exit(code=1) from error
+
+    try:
+        data = json.loads(yaml_to_json(contents))
+    except (TypeError, ValueError, YAMLError) as error:
+        typer.echo(
+            f"Error parsing user data file '{file_path}': "
+            "expected valid JSON or YAML."
+        )
+        raise typer.Exit(code=1) from error
+
+    if not isinstance(data, dict):
+        typer.echo("User data file must contain an object at the top level.")
+        raise typer.Exit(code=1)
+
+    return cast(dict[str, JSONValue], data)
+
 
 def _create_filters(
     device: int | None = None,
@@ -70,11 +124,6 @@ def _create_filters(
     }
     return filters or None
 
-def handle_api_error(e: Exception) -> None:
-    """Handle API errors by printing an error message and exiting."""
-    typer.echo(f"Error requesting API: {e}")
-    raise typer.Exit(code=1) from e
-
 @users_app.command("list")
 def list_users(
     device: int | None = typer.Option(
@@ -95,8 +144,12 @@ def list_users(
     json_output: bool = typer.Option(
         False,
         "--json",
-        is_flag=True,
         help="Output the list of users in JSON format."
+    ),
+    yaml_output: bool = typer.Option(
+        False,
+        "--yaml",
+        help="Output the list of users in YAML format."
     ),
 ) -> None:
     """Manage users in the TTL-LAMa CLI."""
@@ -123,6 +176,14 @@ def list_users(
 
     if json_output:
         typer.echo(json.dumps(users, ensure_ascii=False, indent=4))
+        raise typer.Exit()
+
+    if yaml_output:
+        users = {
+            "users": list(users or [])
+        }
+        typer.echo(json_to_yaml(json.dumps(users, ensure_ascii=False, indent=4)))
+        raise typer.Exit()
 
     typer.echo()
     table = Table(title="Users", expand=True)
@@ -140,6 +201,97 @@ def list_users(
     console = Console()
     console.print(table)
 
+
+@users_app.command("create")
+def create_user(
+    file_path: Path = typer.Option(
+        ...,
+        "--file",
+        help="Path to a JSON or YAML file containing user data.",
+    ),
+) -> None:
+    """Create a user from a JSON or YAML file."""
+    user_data = _load_user_file(file_path)
+    url, port, token = _get_server_and_token()
+
+    request = SpecificRequest(
+        method=HTTPMethod.POST,
+        endpoint="admin/users",
+        json_body=user_data,
+    )
+    try:
+        request_api(
+            server=ServerParameters(server_url=url, server_port=port),
+            token=token,
+            specific_request=request,
+        )
+    except (AuthorizationError, AuthenticationError, APIError) as error:
+        handle_api_error(error)
+
+    typer.echo("User created successfully.")
+
+
+@users_app.command("update")
+def update_user(
+    user_id: str = typer.Option(
+        ...,
+        "--user",
+        help="Specify the ID of the user to update.",
+    ),
+    file_path: Path = typer.Option(
+        ...,
+        "--file",
+        help="Path to a JSON or YAML file containing fields to update.",
+    ),
+) -> None:
+    """Update a user from a JSON or YAML file."""
+    user_data = _load_user_file(file_path)
+    url, port, token = _get_server_and_token()
+
+    request = SpecificRequest(
+        method=HTTPMethod.PATCH,
+        endpoint=f"admin/users/{user_id}",
+        json_body=user_data,
+    )
+    try:
+        request_api(
+            server=ServerParameters(server_url=url, server_port=port),
+            token=token,
+            specific_request=request,
+        )
+    except (AuthorizationError, AuthenticationError, APIError) as error:
+        handle_api_error(error)
+
+    typer.echo(f"User {user_id} updated successfully.")
+
+
+@users_app.command("delete")
+def delete_user(
+    user_id: str = typer.Option(
+        ...,
+        "--user",
+        help="Specify the ID of the user to delete.",
+    ),
+) -> None:
+    """Delete a user by ID."""
+    url, port, token = _get_server_and_token()
+
+    request = SpecificRequest(
+        method=HTTPMethod.DELETE,
+        endpoint=f"admin/users/{user_id}",
+    )
+    try:
+        request_api(
+            server=ServerParameters(server_url=url, server_port=port),
+            token=token,
+            specific_request=request,
+        )
+    except (AuthorizationError, AuthenticationError, APIError) as error:
+        handle_api_error(error)
+
+    typer.echo(f"User {user_id} deleted successfully.")
+
+
 @users_app.command("get")
 def get_user(
     user_id: str = typer.Argument(
@@ -149,8 +301,12 @@ def get_user(
     json_output: bool = typer.Option(
         False,
         "--json",
-        is_flag=True,
         help="Output the user information in JSON format."
+    ),
+    yaml_output: bool = typer.Option(
+        False,
+        "--yaml",
+        help="Output the user information in YAML format."
     ),
 ) -> None:
     """Get a specific user in the TTL-LAMa CLI."""
@@ -177,15 +333,27 @@ def get_user(
     except (AuthorizationError, AuthenticationError, APIError) as e:
         handle_api_error(e)
 
+    if user is None:
+        typer.echo(f"User with ID {user_id} could not be retrieved.")
+        raise typer.Exit(code=1)
+
+    editable_user = {
+        key: value
+        for key, value in user.items()
+        if key in EDITABLE_USER_FIELDS
+    }
+
     if json_output:
-        typer.echo(json.dumps(user, ensure_ascii=False, indent=4))
+        typer.echo(json.dumps(editable_user, ensure_ascii=False, indent=4))
         raise typer.Exit()
-    if user is not None:
-        typer.echo()
-        table = Table(title=f"User {user.get('username', '')} Details", expand=True)
-        table.add_column("Field", style="cyan", no_wrap=True, overflow="ellipsis")
-        table.add_column("Value", style="green", overflow="ellipsis")
-        for key, value in user.items():
-            table.add_row(str(key), str(value))
-        console = Console()
-        console.print(table)
+    if yaml_output:
+        typer.echo(json_to_yaml(json.dumps(editable_user, ensure_ascii=False, indent=4)))
+        raise typer.Exit()
+    typer.echo()
+    table = Table(title=f"User {user.get('username', '')} Details", expand=True)
+    table.add_column("Field", style="cyan", no_wrap=True, overflow="ellipsis")
+    table.add_column("Value", style="green", overflow="ellipsis")
+    for key, value in user.items():
+        table.add_row(str(key), str(value))
+    console = Console()
+    console.print(table)
