@@ -60,4 +60,3 @@ def delete_access_token(
             service,
             username,
         )
-

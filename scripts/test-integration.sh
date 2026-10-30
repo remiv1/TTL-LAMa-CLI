@@ -1,21 +1,25 @@
 #!/usr/bin/env bash
+
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
 BLUE='\033[0;34m'
 RESET='\033[0m'
+
+# Configuration
 COMPOSE_FILE='compose.test.yml'
 LOG_FILE='build.log'
-ONLY_SQLITE=false
-WITHOUT_OIDC=false
 TEST_SELECTORS=()
-CONTAINERS_TO_DOWN=''
 export PODMAN_COMPOSE_WARNING_LOGS=false
+
+# Directories
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 CLI_DIR="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 COMPOSE_FILE="$CLI_DIR/compose.test.yml"
-PROJECT_NAME="ttlama-cli-integration-${USER:-user}-$$"
-COMPOSE=(podman compose --project-name "$PROJECT_NAME" --file "$COMPOSE_FILE")
+
+# Compose command
+COMPOSE=(podman compose -f "$COMPOSE_FILE")
 
 usage() {
   printf 'Usage: %s [-t tests.module::test_name]\n' "$0"
@@ -46,11 +50,12 @@ done
 
 # Helper to print section headers with colors
 section() {
+  printf "\n"
   local color="$1"
   local title="$2"
   len=${#title}
   left_and_right=3
-  total=80
+  total=$(tput cols)
   spaces=$(( (total - len - 2 * left_and_right - 2) / 2 ))
   added=$((len % 2))
   printf -- "${color}%*s\n" "$total" '' | tr ' ' '='
@@ -78,12 +83,31 @@ result() {
   fi
 }
 
+prepare_environment() {
+  if [[ ! -f "$COMPOSE_FILE" ]]; then
+    printf "${RED}%s${RESET}\n" "Compose file $COMPOSE_FILE not found."
+    exit 1
+  fi
+  if ! command -v podman &> /dev/null; then
+    printf "${RED}%s${RESET}\n" "Podman is not installed."
+    exit 1
+  fi
+  ${COMPOSE[@]} up -d server > "$LOG_FILE" 2>&1
+
+  if (( $? != 0 )); then
+    printf "${RED}%s${RESET}\n" "Failed to pull server image. See $LOG_FILE for details."
+    cat "$LOG_FILE"
+    rm -f "$LOG_FILE"
+    exit 1
+  fi
+}
+
 launch_tests() {
   # Launch only the test container with the requested pytest selection.
   local -a pytest_args=("-v" "--color=yes" "-ra" "-p" "no:cacheprovider")
   local -a compose_args=(run --rm --no-deps)
   pytest_args+=("${TEST_SELECTORS[@]}")
-  podman compose -f "$COMPOSE_FILE" "${compose_args[@]}" tests \
+  podman compose -f "$COMPOSE_FILE" "${compose_args[@]}" cli-tests \
     python -m pytest "${pytest_args[@]}"
   code=$?
   if (( code != 0 )); then
@@ -99,18 +123,18 @@ cleanup() {
   local exit_code=$?
   trap - EXIT
   "${COMPOSE[@]}" down --remove-orphans >/dev/null 2>&1 || true
+  rm -f "$LOG_FILE"
+  printf "\n"
+  printf "${YELLOW}%s${RESET}\n" "Cleanup completed."
+  printf "\n"
   exit "$exit_code"
-}
-
-pull_server_image() {
-  "${COMPOSE[@]}" pull server
 }
 
 trap cleanup EXIT
 
 printf "\n"
-section "${GREEN}" "Pulling server image"
-result "pull_server_image" "Server image pulled successfully" "Failed to pull server image"
+section "${GREEN}" "Preparing environment"
+result "prepare_environment" "Environment prepared successfully" "Failed to prepare environment"
 printf "\n"
 
 section "${RED}" "Running CLI tests"
