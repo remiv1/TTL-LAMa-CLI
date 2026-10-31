@@ -14,12 +14,12 @@ Le paquet est autonome dans le dépôt `cli/` et peut évoluer indépendamment d
 
 ## État du projet
 
-La CLI est en développement. Les commandes disponibles permettent de configurer l’adresse du serveur, de s’authentifier avec un compte interne, de changer le mot de passe de l’utilisateur connecté et de gérer les utilisateurs. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
+La CLI est en développement. Les commandes disponibles permettent de configurer l’adresse du serveur, de s’authentifier avec un compte interne, de consulter et fermer la session courante, de changer le mot de passe de l’utilisateur connecté et de gérer les utilisateurs. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
 
 | Groupe | Commandes disponibles | Commandes prévues |
 | --- | --- | --- |
 | `config` | `set-server` | — |
-| `auth` | `login internal`, `password-chg` | `login external`, `login oidc`, `logout`, `status` |
+| `auth` | `login internal`, `logout`, `password-chg`, `status` | `login external`, `login oidc` |
 | `user` | — | consultation de l’utilisateur, des appareils, des baux et des profils qui lui sont accessibles |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
 | `admin users` | `list`, `get`, `create`, `update`, `delete` | `assign`, `unassign` |
@@ -65,6 +65,27 @@ jeton.
 ```bash
 ttlama auth password-chg
 ```
+
+Consultez la session courante, avec les dates d’expiration des sessions
+actives, ou fermez celle utilisée par cette instance de la CLI :
+
+```bash
+ttlama auth status
+ttlama auth status --json
+ttlama auth status --yaml
+ttlama auth status --check-connected
+ttlama auth logout
+```
+
+`status` n’affiche ni jeton d’accès ni hash. Sans jeton enregistré localement,
+la commande indique que la session est inactive et se termine avec succès ;
+`--check-connected` renvoie un code non nul dans ce cas. `logout` révoque
+uniquement la session CLI courante. Il supprime le jeton local après succès ou
+si le serveur le déclare invalide ; une erreur réseau ou serveur le conserve
+pour permettre une nouvelle tentative. Les sorties JSON et YAML de `status`
+contiennent `session` (`active` ou `inactive`), `user` (`null` sans jeton local ;
+sinon `id`, `username`, `email` et `is_admin`), ainsi que `sessions`, une liste
+de dates `expires_at`.
 
 ## Configuration et identifiants
 

@@ -54,10 +54,15 @@ def get_access_token(server_url: str, server_port: int) -> str | None:
     :return: The access token if it exists, otherwise None.
     :rtype: str | None
     """
-    return keyring.get_password(
-        _service(server_url, server_port),
-        _TOKEN_ACCOUNT,
-    )
+    try:
+        return keyring.get_password(
+            _service(server_url, server_port),
+            _TOKEN_ACCOUNT,
+        )
+    except KeyringError as error:
+        raise TokenStorageError(
+            "Impossible de lire le jeton dans le trousseau système."
+        ) from error
 
 def delete_access_token(server_url: str, server_port: int) -> None:
     """Delete the access token for the given server and user.
@@ -68,8 +73,13 @@ def delete_access_token(server_url: str, server_port: int) -> None:
     :type server_port: int
     """
     service = _service(server_url, server_port)
-    if keyring.get_password(service, _TOKEN_ACCOUNT) is not None:
-        keyring.delete_password(
-            service,
-            _TOKEN_ACCOUNT,
-        )
+    try:
+        if keyring.get_password(service, _TOKEN_ACCOUNT) is not None:
+            keyring.delete_password(
+                service,
+                _TOKEN_ACCOUNT,
+            )
+    except KeyringError as error:
+        raise TokenStorageError(
+            "Impossible de supprimer le jeton du trousseau système."
+        ) from error

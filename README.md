@@ -14,12 +14,12 @@ The CLI lives in the `cli/` directory and can evolve independently of the server
 
 ## Project status
 
-The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, change the signed-in user's password, and manage users. Commands marked as planned below are targets for future implementation, not commands that can be used today.
+The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, check and close the current session, change the signed-in user's password, and manage users. Commands marked as planned below are targets for future implementation, not commands that can be used today.
 
 | Group | Available commands | Planned commands |
 | --- | --- | --- |
 | `config` | `set-server` | — |
-| `auth` | `login internal`, `password-chg` | `login external`, `login oidc`, `logout`, `status` |
+| `auth` | `login internal`, `logout`, `password-chg`, `status` | `login external`, `login oidc` |
 | `user` | — | View the user, their devices and leases, and the profiles available to them |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
 | `admin users` | `list`, `get`, `create`, `update`, `delete` | `assign`, `unassign` |
@@ -64,6 +64,27 @@ the CLI token; sign in again to store a new token.
 ```bash
 ttlama auth password-chg
 ```
+
+Inspect the current session, including active session expirations, or close the
+session used by this CLI instance:
+
+```bash
+ttlama auth status
+ttlama auth status --json
+ttlama auth status --yaml
+ttlama auth status --check-connected
+ttlama auth logout
+```
+
+`status` does not display access tokens or their hashes. With no locally stored
+token it reports a disconnected state and exits successfully; use
+`--check-connected` to return a nonzero exit code instead. `logout` revokes only
+the current CLI session. It removes the local token after success, and also
+cleans up a token the server reports as invalid; a server/network error keeps
+the token so the operation can be retried. JSON and YAML status output contain
+`session` (`active` or `inactive`), `user` (`null` without a local token;
+otherwise `id`, `username`, `email`, and `is_admin`), and `sessions`, a list of
+`expires_at` timestamps.
 
 ## Configuration and credentials
 
