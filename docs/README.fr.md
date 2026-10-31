@@ -14,12 +14,12 @@ Le paquet est autonome dans le dépôt `cli/` et peut évoluer indépendamment d
 
 ## État du projet
 
-La CLI est en développement. À ce jour, les commandes disponibles permettent de configurer l’adresse du serveur et de s’authentifier avec un compte interne. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
+La CLI est en développement. Les commandes disponibles permettent de configurer l’adresse du serveur, de s’authentifier avec un compte interne, de changer le mot de passe de l’utilisateur connecté et de gérer les utilisateurs. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
 
 | Groupe | Commandes disponibles | Commandes prévues |
 | --- | --- | --- |
 | `config` | `set-server` | — |
-| `auth` | `login internal` | `login external`, `login oidc`, `logout`, `status` |
+| `auth` | `login internal`, `password-chg` | `login external`, `login oidc`, `logout`, `status` |
 | `user` | — | consultation de l’utilisateur, des appareils, des baux et des profils qui lui sont accessibles |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
 | `admin users` | `list`, `get`, `create`, `update`, `delete` | `assign`, `unassign` |
@@ -56,11 +56,24 @@ ttlama auth login internal --user admin
 
 La commande effectue l’échange CSRF requis par l’API, puis enregistre le jeton d’accès retourné par le serveur. Elle n’affiche ni le mot de passe ni le jeton.
 
+Changez le mot de passe du compte connecté. Le mot de passe actuel et le nouveau
+sont demandés de façon masquée, puis le nouveau est demandé une seconde fois
+pour confirmation. Après le succès, toutes les sessions du compte sont
+révoquées, y compris le jeton CLI ; reconnectez-vous pour enregistrer un nouveau
+jeton.
+
+```bash
+ttlama auth password-chg
+```
+
 ## Configuration et identifiants
 
 L’adresse et le port de l’instance sont enregistrés dans `config.json`, sous le répertoire de configuration utilisateur déterminé par `platformdirs` (par exemple le répertoire XDG sous Linux). L’URL doit utiliser `http` ou `https`, sans identifiants, paramètres de requête ni fragment.
 
-Le jeton d’accès est enregistré dans le trousseau système via `keyring`. Son entrée est associée à l’instance et au nom d’utilisateur. Il n’est donc pas écrit dans le fichier de configuration JSON.
+Le jeton d’accès est enregistré dans le trousseau système via `keyring`, dans
+une entrée par instance configurée. Il n’est pas écrit dans le fichier de
+configuration JSON. Un changement de mot de passe révoque ce jeton côté serveur ;
+la prochaine connexion réussie le remplace localement.
 
 ## Organisation du code
 
@@ -118,6 +131,7 @@ ttlama
  │    │     └── oidc --user <username>
  │    │
  │    ├── logout
+ │    ├── password-chg
  │    └── status
  │
  ├── user → **Utilisation** → **_Qu'est-ce que j'utilise ?_**
@@ -184,6 +198,6 @@ ttlama
 
 ### Fichiers des commandes admin users
 
-`ttlama admin users create --file` et `update --user <user_id> --file` acceptent des objets JSON ou YAML encodés en UTF-8. La création exige `username` ; `email`, `enabled`, `is_admin` et `password` sont facultatifs. Pour une mise à jour, le fichier contient uniquement les champs à modifier ; utilisez `email: null` pour effacer l’adresse e-mail. Le mot de passe présent dans le fichier est envoyé à l’API, mais n’est jamais affiché par la CLI.
+`ttlama admin users create --file` et `update --user <user_id> --file` acceptent des objets JSON ou YAML encodés en UTF-8. La création exige `username` ; `email`, `enabled`, `is_admin` et `password` sont facultatifs. Pour une mise à jour, le fichier contient uniquement les champs à modifier ; utilisez `email: null` pour effacer l’adresse e-mail. Le mot de passe présent dans le fichier est envoyé à l’API, mais n’est jamais affiché par la CLI. Si aucun mot de passe n’est fourni et que le serveur utilise l’authentification interne, l’API en génère un et la CLI ne l’affiche que dans la réponse de création ; conservez-le immédiatement, car il ne sera plus récupérable. Sans authentification interne, aucun identifiant interne n’est créé si le mot de passe est absent.
 
 La sortie JSON ou YAML de `ttlama admin users get <user_id> --json` ou `--yaml` est un objet plat ne contenant que les champs modifiables renvoyés par l’API ; elle peut être passée directement à `update --user <user_id> --file`. La sortie de `list` reste une collection et ne constitue pas un corps de mise à jour. Les mots de passe ne sont jamais renvoyés ; ajoutez manuellement un champ `password` pour en modifier un.

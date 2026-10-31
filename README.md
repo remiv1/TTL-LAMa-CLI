@@ -14,12 +14,12 @@ The CLI lives in the `cli/` directory and can evolve independently of the server
 
 ## Project status
 
-The CLI is under development. Currently available commands let you configure the server address and authenticate with an internal account. Commands marked as planned below are targets for future implementation, not commands that can be used today.
+The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, change the signed-in user's password, and manage users. Commands marked as planned below are targets for future implementation, not commands that can be used today.
 
 | Group | Available commands | Planned commands |
 | --- | --- | --- |
 | `config` | `set-server` | — |
-| `auth` | `login internal` | `login external`, `login oidc`, `logout`, `status` |
+| `auth` | `login internal`, `password-chg` | `login external`, `login oidc`, `logout`, `status` |
 | `user` | — | View the user, their devices and leases, and the profiles available to them |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
 | `admin users` | `list`, `get`, `create`, `update`, `delete` | `assign`, `unassign` |
@@ -56,11 +56,23 @@ ttlama auth login internal --user admin
 
 The command performs the CSRF exchange required by the API, then stores the access token returned by the server. It does not display the password or token.
 
+Change the password of the signed-in account. The current password and the new
+password are prompted for securely, with a second prompt to confirm the new
+password. After success, all of the account's sessions are revoked, including
+the CLI token; sign in again to store a new token.
+
+```bash
+ttlama auth password-chg
+```
+
 ## Configuration and credentials
 
 The instance address and port are stored in `config.json` under the user configuration directory determined by `platformdirs` (for example, the XDG directory on Linux). The URL must use `http` or `https` and must not contain credentials, query parameters, or a fragment.
 
-The access token is stored in the system keyring through `keyring`. Its entry is associated with the instance and username, so the token is not written to the JSON configuration file.
+The access token is stored in the system keyring through `keyring`, in one entry
+per configured instance. It is not written to the JSON configuration file. A
+password change revokes this token on the server; the next successful login
+replaces the local token.
 
 ## Code layout
 
@@ -103,6 +115,7 @@ ttlama
  │    │     └── oidc --user <username>
  │    │
  │    ├── logout
+ │    ├── password-chg
  │    └── status
  │
  ├── user → **Utilization** → **_What am I using ?_**
@@ -169,6 +182,6 @@ ttlama
 
 ### Admin user files
 
-`ttlama admin users create --file` and `update --user <user_id> --file` accept UTF-8 JSON or YAML objects. Create files require `username`; `email`, `enabled`, `is_admin`, and `password` are optional. Update files contain only the fields to change; use `email: null` to clear the email address. A password in the input file is sent to the API but is never displayed by the CLI.
+`ttlama admin users create --file` and `update --user <user_id> --file` accept UTF-8 JSON or YAML objects. Create files require `username`; `email`, `enabled`, `is_admin`, and `password` are optional. Update files contain only the fields to change; use `email: null` to clear the email address. A password in the input file is sent to the API but is never displayed by the CLI. If no password is supplied and the server uses internal authentication, the API generates one and the CLI displays it in the creation response only; save it immediately because it cannot be retrieved later. Without internal authentication, no internal credential is created when the password is omitted.
 
 The JSON or YAML output of `ttlama admin users get <user_id> --json` or `--yaml` is a flat object containing the editable fields returned by the API and can be passed directly to `update --user <user_id> --file`. List output remains a collection and is not an update body. Passwords are never returned; add a `password` field manually when changing one.

@@ -171,18 +171,21 @@ def list_users(
         if not users:
             typer.echo("No users found.")
             raise typer.Exit(code=1)
+        if not isinstance(users, list):
+            typer.echo("The API response isn't a user list.")
+            raise typer.Exit(code=1)
     except (AuthorizationError, AuthenticationError, APIError) as e:
         handle_api_error(e)
 
+    user_rows = cast(list[dict[str, object]], users)
     if json_output:
-        typer.echo(json.dumps(users, ensure_ascii=False, indent=4))
+        typer.echo(json.dumps(user_rows, ensure_ascii=False, indent=4))
         raise typer.Exit()
 
     if yaml_output:
-        users = {
-            "users": list(users or [])
-        }
-        typer.echo(json_to_yaml(json.dumps(users, ensure_ascii=False, indent=4)))
+        typer.echo(json_to_yaml(json.dumps(
+            {"users": user_rows}, ensure_ascii=False, indent=4
+        )))
         raise typer.Exit()
 
     typer.echo()
@@ -191,7 +194,7 @@ def list_users(
     table.add_column("Username", style="green", overflow="ellipsis")
     table.add_column("Active", justify="center", style="red", overflow="ellipsis")
     table.add_column("Admin", justify="center", style="red", overflow="ellipsis")
-    for u in users or []:
+    for u in user_rows:
         table.add_row(
             str(u.get("id", "")),
             str(u.get("username", "")),
@@ -219,8 +222,9 @@ def create_user(
         endpoint="admin/users",
         json_body=user_data,
     )
+    result: dict[str, object] | list[dict[str, object]] | None = None
     try:
-        request_api(
+        result = request_api(
             server=ServerParameters(server_url=url, server_port=port),
             token=token,
             specific_request=request,
@@ -229,6 +233,11 @@ def create_user(
         handle_api_error(error)
 
     typer.echo("User created successfully.")
+    if isinstance(result, dict):
+        generated_password = result.get("generated_password")
+        if isinstance(generated_password, str):
+            typer.echo(f"Generated password (shown only once): {generated_password}")
+            typer.echo("Save it now; it cannot be retrieved later.")
 
 
 @users_app.command("update")
@@ -326,7 +335,7 @@ def get_user(
         if not isinstance(result, dict):
             typer.echo("The API response isn't a user")
             raise typer.Exit(code=1)
-        user = cast(dict[str, object], result)
+        user = result
         if not user:
             typer.echo(f"User with ID {user_id} not found.")
             raise typer.Exit(code=1)

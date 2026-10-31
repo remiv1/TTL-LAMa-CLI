@@ -7,10 +7,13 @@ from __future__ import annotations
 
 import typer
 
-from ..api_client import authenticate_internal
+from ..api_client import authenticate_internal, request_api
 from ..config_store import load_server_config
-from ..token_store import save_access_token
-from ..exc import APIError, AuthenticationError, TokenStorageError
+from ..token_store import get_access_token, save_access_token
+from ..exc import (
+    APIError, AuthenticationError, AuthorizationError, TokenStorageError,
+)
+from ..objects import HTTPMethod, ServerParameters, SpecificRequest
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -49,3 +52,39 @@ def login_internal(
         raise typer.Exit(code=1) from None
 
     typer.echo("Connexion réussie. Jeton enregistré dans le trousseau système.")
+
+
+@app.command("password-chg")
+def change_password() -> None:
+    """Change the password of the authenticated account."""
+    try:
+        server_url, server_port = load_server_config()
+        token = get_access_token(server_url, server_port)
+        if not token:
+            raise TokenStorageError("Aucun jeton d’accès n’est enregistré pour cette instance.")
+
+        current_password = typer.prompt("Mot de passe actuel", hide_input=True)
+        new_password = typer.prompt("Nouveau mot de passe", hide_input=True)
+        confirmation = typer.prompt("Confirmer le nouveau mot de passe", hide_input=True)
+        if new_password != confirmation:
+            typer.echo("Les nouveaux mots de passe ne correspondent pas.", err=True)
+            raise typer.Exit(code=1)
+
+        request_api(
+            ServerParameters(server_url=server_url, server_port=server_port),
+            token,
+            SpecificRequest(
+                endpoint="users/me/password",
+                method=HTTPMethod.PATCH,
+                json_body={
+                    "current_password": current_password,
+                    "new_password": new_password,
+                },
+            ),
+        )
+    except (FileNotFoundError, ValueError, APIError, AuthenticationError,
+            AuthorizationError, TokenStorageError) as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=1) from None
+
+    typer.echo("Mot de passe modifié. Reconnectez-vous ; toutes les sessions sont révoquées.")

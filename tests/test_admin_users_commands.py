@@ -54,6 +54,30 @@ def test_create_user_sends_yaml_file_to_api(
     assert request.json_body == {"username": "alice", "is_admin": True}
 
 
+def test_create_user_displays_generated_password_once(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A generated password is shown only when the API returns it on creation."""
+    file_path = tmp_path / "user.yaml"
+    file_path.write_text("username: alice\n", encoding="utf-8")
+    generated_password = "one-time-generated-password"
+    request_api = Mock(return_value={
+        "user": {"username": "alice"},
+        "generated_password": generated_password,
+    })
+    _mock_user_command_dependencies(monkeypatch, request_api)
+
+    result = CliRunner().invoke(
+        app,
+        ["admin", "users", "create", "--file", str(file_path)],
+    )
+
+    assert result.exit_code == 0
+    assert generated_password in result.output
+    assert "shown only once" in result.output
+
+
 def test_update_user_sends_json_file_to_api(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

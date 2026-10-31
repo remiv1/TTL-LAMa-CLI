@@ -94,7 +94,7 @@ def request_api(
         server: ServerParameters,
         token: str,
         specific_request: SpecificRequest,
-        ) -> list[dict[str, object]] | None:
+    ) -> dict[str, object] | list[dict[str, object]] | None:
     """Request the API.
 
     :param server: Server parameters.
@@ -103,8 +103,8 @@ def request_api(
     :type token: str
     :param specific_request: Specific HTTP request details.
     :type specific_request: SpecificRequest
-    :return: Response data from the API, or None if no data.
-    :rtype: list[dict[str, object]] | None
+    :return: An object, a list of objects, or None if the API returned no data.
+    :rtype: dict[str, object] | list[dict[str, object]] | None
     :raises APIError: If there is an API error.
     """
     url = f"{server.server_url}:{server.server_port}/api/v1/{specific_request.endpoint}"
