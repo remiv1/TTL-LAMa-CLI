@@ -14,7 +14,7 @@ The CLI lives in the `cli/` directory and can evolve independently of the server
 
 ## Project status
 
-The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, check and close the current session, change the signed-in user's password, and manage users. Commands marked as planned below are targets for future implementation, not commands that can be used today.
+The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, check and close the current session, change the signed-in user's password, and manage users and profiles. Commands marked as planned below are targets for future implementation, not commands that can be used today.
 
 | Group | Available commands | Planned commands |
 | --- | --- | --- |
@@ -25,9 +25,9 @@ The CLI is under development. Currently available commands let you configure the
 | `admin users` | `list`, `get`, `create`, `update`, `delete` | `assign`, `unassign` |
 | `admin devices` | — | `list`, `get`, `update`, `block`, `delete` |
 | `admin leases` | — | `list`, `get`, `revoke` |
-| `admin profiles` | — | `list`, `get`, `create`, `update`, `delete` |
+| `admin profiles` | `list`, `get`, `create`, `update`, `delete` | — |
 
-Planned commands will cover the resources and operations exposed by the [v1 API](../src/api/v1/README.md) (see the github.com/remiv1/TTL-LAMa repository). Their filtering options and file formats will be defined as they are implemented.
+Remaining planned commands will cover the resources and operations exposed by the [v1 API](../src/api/v1/README.md) (see the github.com/remiv1/TTL-LAMa repository). Their filtering options and file formats will be defined as they are implemented.
 
 ## Installation and usage
 
@@ -56,17 +56,13 @@ ttlama auth login internal --user admin
 
 The command performs the CSRF exchange required by the API, then stores the access token returned by the server. It does not display the password or token.
 
-Change the password of the signed-in account. The current password and the new
-password are prompted for securely, with a second prompt to confirm the new
-password. After success, all of the account's sessions are revoked, including
-the CLI token; sign in again to store a new token.
+Change the password of the signed-in account. The current password and the new password are prompted for securely, with a second prompt to confirm the new password. After success, all of the account's sessions are revoked, including the CLI token; sign in again to store a new token.
 
 ```bash
 ttlama auth password-chg
 ```
 
-Inspect the current session, including active session expirations, or close the
-session used by this CLI instance:
+Inspect the current session, including active session expirations, or close the session used by this CLI instance:
 
 ```bash
 ttlama auth status
@@ -76,24 +72,13 @@ ttlama auth status --check-connected
 ttlama auth logout
 ```
 
-`status` does not display access tokens or their hashes. With no locally stored
-token it reports a disconnected state and exits successfully; use
-`--check-connected` to return a nonzero exit code instead. `logout` revokes only
-the current CLI session. It removes the local token after success, and also
-cleans up a token the server reports as invalid; a server/network error keeps
-the token so the operation can be retried. JSON and YAML status output contain
-`session` (`active` or `inactive`), `user` (`null` without a local token;
-otherwise `id`, `username`, `email`, and `is_admin`), and `sessions`, a list of
-`expires_at` timestamps.
+`status` does not display access tokens or their hashes. With no locally stored token it reports a disconnected state and exits successfully; use `--check-connected` to return a nonzero exit code instead. `logout` revokes only the current CLI session. It removes the local token after success, and also cleans up a token the server reports as invalid; a server/network error keeps the token so the operation can be retried. JSON and YAML status output contain `session` (`active` or `inactive`), `user` (`null` without a local token; otherwise `id`, `username`, `email`, and `is_admin`), and `sessions`, a list of `expires_at` timestamps.
 
 ## Configuration and credentials
 
 The instance address and port are stored in `config.json` under the user configuration directory determined by `platformdirs` (for example, the XDG directory on Linux). The URL must use `http` or `https` and must not contain credentials, query parameters, or a fragment.
 
-The access token is stored in the system keyring through `keyring`, in one entry
-per configured instance. It is not written to the JSON configuration file. A
-password change revokes this token on the server; the next successful login
-replaces the local token.
+The access token is stored in the system keyring through `keyring`, in one entry per configured instance. It is not written to the JSON configuration file. A password change revokes this token on the server; the next successful login replaces the local token.
 
 ## Code layout
 
@@ -195,7 +180,7 @@ ttlama
       │
       └── profiles
             ├── list [--user <user_id> &/| --device <device_id> &/| --lease <lease_id> | none]
-            ├── get --profile <profile_id> [--output <file_path> | none]
+            ├── get --profile <profile_id> [--json | --yaml | none]
             ├── create --file <file_path>
             ├── update --profile <profile_id> --file <file_path>
             └── delete --profile <profile_id>
@@ -206,3 +191,17 @@ ttlama
 `ttlama admin users create --file` and `update --user <user_id> --file` accept UTF-8 JSON or YAML objects. Create files require `username`; `email`, `enabled`, `is_admin`, and `password` are optional. Update files contain only the fields to change; use `email: null` to clear the email address. A password in the input file is sent to the API but is never displayed by the CLI. If no password is supplied and the server uses internal authentication, the API generates one and the CLI displays it in the creation response only; save it immediately because it cannot be retrieved later. Without internal authentication, no internal credential is created when the password is omitted.
 
 The JSON or YAML output of `ttlama admin users get <user_id> --json` or `--yaml` is a flat object containing the editable fields returned by the API and can be passed directly to `update --user <user_id> --file`. List output remains a collection and is not an update body. Passwords are never returned; add a `password` field manually when changing one.
+
+### Admin profile files
+
+`ttlama admin profiles create --file` accepts a UTF-8 JSON or YAML object with `name`, `default_duration`, `maximum_duration`, and a non-empty `networks` list of CIDRs. Durations use `d`, `h`, `m`, or `s` units, and the default cannot exceed the maximum. For example:
+
+```yaml
+name: office-access
+default_duration: 1h
+maximum_duration: 8h
+networks:
+      - 10.0.0.0/24
+```
+
+`update --profile <profile_id> --file` accepts any subset of those fields. `get --profile <profile_id> --json` and `--yaml` output a flat object that can be passed to `update --file`; `list` filters `--user`, `--device`, and `--lease` are combined with AND. Historical profiles without a policy return only their name, so add the complete policy fields before updating one. Deleting a profile revokes it and its dependent assignments and leases.
