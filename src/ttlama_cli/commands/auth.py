@@ -1,5 +1,14 @@
 """Commands for TTL-LAMa CLI.
 
+.. prefix:: `ttlama auth`
+
+.. CLI::
+    - `login`: Login to TTL-LAMa.
+        - `internal`: Login with an internal account.
+    - `logout`: Logout from TTL-LAMa.
+    - `status`: Display the current authentication status.
+    - `password-chg`: Change the password for the current user.
+
 .. module_author:: Rémi Verschuur <rverschuur@audit-io.fr>
 .. version:: 1.0.0
 """
@@ -14,95 +23,33 @@ from rich.table import Table
 
 from ..api_client import authenticate_internal, request_api
 from ..config_store import load_server_config
-from ..token_store import delete_access_token, get_access_token, save_access_token
+from ..token_store import (
+    delete_access_token,
+    get_access_token,
+    save_access_token,
+)
 from ..exc import (
-    APIError, AuthenticationError, AuthorizationError, TokenStorageError,
+    APIError,
+    AuthenticationError,
+    AuthorizationError,
+    TokenStorageError,
 )
 from ..objects import HTTPMethod, ServerParameters, SpecificRequest
 from ..utils import json_to_yaml
 
-INVALID_RESPONSE = "La réponse de statut de l’API est invalide."
+INVALID_RESPONSE = "The API status response is invalid."
 
 app = typer.Typer(
     no_args_is_help=True,
     help="Authentication to a TTL-LAMa.",
 )
+
 login_app = typer.Typer(
     no_args_is_help=True,
     help="Login to TTL-LAMa.",
 )
+
 app.add_typer(login_app, name="login")
-
-@login_app.command("internal")
-def login_internal(
-    user: str = typer.Option(
-        ...,
-        "--user",
-        help="Username for internal login.",
-    ),
-) -> None:
-    """Connect with an internal account to a TTL-LAMa session."""
-    try:
-        server_url, server_port = load_server_config()
-        token = authenticate_internal(
-            server_url,
-            server_port,
-            user,
-            typer.prompt("Password", hide_input=True),
-        )
-        save_access_token(
-            server_url,
-            server_port,
-            token,
-        )
-    except (APIError, AuthenticationError, TokenStorageError) as error:
-        typer.echo(str(error), err=True)
-        raise typer.Exit(code=1) from None
-
-    typer.echo("Connexion réussie. Jeton enregistré dans le trousseau système.")
-
-
-@app.command("logout")
-def logout() -> None:
-    """Revoke the current session and remove its local token."""
-    try:
-        server_url, server_port = load_server_config()
-        token = get_access_token(server_url, server_port)
-    except (FileNotFoundError, ValueError, TokenStorageError) as error:
-        typer.echo(str(error), err=True)
-        raise typer.Exit(code=1) from None
-
-    if not token:
-        typer.echo("Aucune session active. Déjà déconnecté.")
-        return
-
-    try:
-        request_api(
-            server=ServerParameters(server_url=server_url, server_port=server_port),
-            token=token,
-            specific_request=SpecificRequest(
-                endpoint="auth/logout",
-                method=HTTPMethod.POST,
-            ),
-        )
-    except AuthenticationError:
-        try:
-            delete_access_token(server_url, server_port)
-        except TokenStorageError as error:
-            typer.echo(str(error), err=True)
-            raise typer.Exit(code=1) from None
-        typer.echo("La session était déjà inactive. Jeton local supprimé.")
-        return
-    except (APIError, AuthorizationError) as error:
-        typer.echo(str(error), err=True)
-        raise typer.Exit(code=1) from None
-
-    try:
-        delete_access_token(server_url, server_port)
-    except TokenStorageError as error:
-        typer.echo(str(error), err=True)
-        raise typer.Exit(code=1) from None
-    typer.echo("Déconnexion réussie. Jeton local supprimé.")
 
 
 def _status_payload(response: object) -> dict[str, object]:
@@ -152,20 +99,92 @@ def _display_status(
         return
 
     typer.echo()
-    table = Table(title="État de l’authentification", expand=True)
-    table.add_column("Élément", style="cyan")
-    table.add_column("Valeur", style="green")
+    table = Table(title="Authentication Status", expand=True)
+    table.add_column("Item", style="cyan")
+    table.add_column("Value", style="green")
     table.add_row("Session", str(status_data["session"]))
     user = cast(dict[str, object] | None, status_data["user"])
     if user is not None:
-        table.add_row("Utilisateur", str(user["username"] or "-"))
-        table.add_row("E-mail", str(user["email"] or "-"))
-        table.add_row("Administrateur", "oui" if user["is_admin"] else "non")
+        table.add_row("User", str(user["username"] or "-"))
+        table.add_row("Email", str(user["email"] or "-"))
+        table.add_row("Administrator", "yes" if user["is_admin"] else "no")
     sessions = cast(list[dict[str, str]], status_data["sessions"])
-    table.add_row("Sessions actives", str(len(sessions)))
+    table.add_row("Active sessions", str(len(sessions)))
     for index, session in enumerate(sessions, start=1):
         table.add_row(f"Expiration {index}", session["expires_at"])
     Console().print(table)
+
+
+@login_app.command("internal")
+def login_internal(
+    user: str = typer.Option(
+        ...,
+        "--user",
+        help="Username for internal login.",
+    ),
+) -> None:
+    """Connect with an internal account to a TTL-LAMa session."""
+    try:
+        server_url, server_port = load_server_config()
+        token = authenticate_internal(
+            server_url,
+            server_port,
+            user,
+            typer.prompt("Password", hide_input=True),
+        )
+        save_access_token(
+            server_url,
+            server_port,
+            token,
+        )
+    except (APIError, AuthenticationError, TokenStorageError) as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=1) from None
+
+    typer.echo("Login successful. Token saved in the system keyring.")
+
+
+@app.command("logout")
+def logout() -> None:
+    """Revoke the current session and remove its local token."""
+    try:
+        server_url, server_port = load_server_config()
+        token = get_access_token(server_url, server_port)
+    except (FileNotFoundError, ValueError, TokenStorageError) as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=1) from None
+
+    if not token:
+        typer.echo("No active session. Already logged out.")
+        return
+
+    try:
+        request_api(
+            server=ServerParameters(server_url=server_url, server_port=server_port),
+            token=token,
+            specific_request=SpecificRequest(
+                endpoint="auth/logout",
+                method=HTTPMethod.POST,
+            ),
+        )
+    except AuthenticationError:
+        try:
+            delete_access_token(server_url, server_port)
+        except TokenStorageError as error:
+            typer.echo(str(error), err=True)
+            raise typer.Exit(code=1) from None
+        typer.echo("The session was already inactive. Local token deleted.")
+        return
+    except (APIError, AuthorizationError) as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=1) from None
+
+    try:
+        delete_access_token(server_url, server_port)
+    except TokenStorageError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=1) from None
+    typer.echo("Logout successful. Local token deleted.")
 
 
 @app.command("status")
@@ -180,7 +199,7 @@ def status(
 ) -> None:
     """Display the current identity and active session expirations."""
     if json_output and yaml_output:
-        typer.echo("Choisissez une seule option de sortie : --json ou --yaml.", err=True)
+        typer.echo("Choose only one output option: --json or --yaml.", err=True)
         raise typer.Exit(code=1)
 
     try:
@@ -203,7 +222,7 @@ def status(
             )
             status_data = _status_payload(response)
         except AuthenticationError:
-            typer.echo("Jeton invalide ou expiré. Reconnectez-vous.", err=True)
+            typer.echo("Token invalid or expired. Login again.", err=True)
             raise typer.Exit(code=1) from None
         except (APIError, AuthorizationError) as error:
             typer.echo(str(error), err=True)
@@ -223,13 +242,13 @@ def change_password() -> None:
         server_url, server_port = load_server_config()
         token = get_access_token(server_url, server_port)
         if not token:
-            raise TokenStorageError("Aucun jeton d’accès n’est enregistré pour cette instance.")
+            raise TokenStorageError("No access token is stored for this instance.")
 
-        current_password = typer.prompt("Mot de passe actuel", hide_input=True)
-        new_password = typer.prompt("Nouveau mot de passe", hide_input=True)
-        confirmation = typer.prompt("Confirmer le nouveau mot de passe", hide_input=True)
+        current_password = typer.prompt("Current password", hide_input=True)
+        new_password = typer.prompt("New password", hide_input=True)
+        confirmation = typer.prompt("Confirm new password", hide_input=True)
         if new_password != confirmation:
-            typer.echo("Les nouveaux mots de passe ne correspondent pas.", err=True)
+            typer.echo("New passwords do not match.", err=True)
             raise typer.Exit(code=1)
 
         request_api(
@@ -249,4 +268,4 @@ def change_password() -> None:
         typer.echo(str(error), err=True)
         raise typer.Exit(code=1) from None
 
-    typer.echo("Mot de passe modifié. Reconnectez-vous ; toutes les sessions sont révoquées.")
+    typer.echo("Password changed. Reconnect → All sessions are revoked.")

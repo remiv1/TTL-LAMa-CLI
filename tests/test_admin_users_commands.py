@@ -13,6 +13,7 @@ from ttlama_cli.objects import HTTPMethod, SpecificRequest
 
 
 USER_ID = "user-123"
+PROFILE_ID = 17
 
 
 def _mock_user_command_dependencies(
@@ -127,6 +128,72 @@ def test_delete_user_sends_delete_request(
     assert request.method is HTTPMethod.DELETE
     assert request.endpoint == "admin/users/user-123"
     assert request.json_body is None
+
+
+@pytest.mark.parametrize(
+    ("command", "method", "success_message"),
+    [
+        ("assign", HTTPMethod.PUT, "assigned to user"),
+        ("unassign", HTTPMethod.DELETE, "unassigned from user"),
+    ],
+)
+def test_profile_assignment_commands_send_expected_request(
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+    method: HTTPMethod,
+    success_message: str,
+) -> None:
+    """Assign and unassign use the corresponding idempotent API methods."""
+    request_api = Mock(return_value=None)
+    _mock_user_command_dependencies(monkeypatch, request_api)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "admin",
+            "users",
+            command,
+            "--user",
+            USER_ID,
+            "--profile",
+            str(PROFILE_ID),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert success_message in result.output
+    request = _get_request(request_api)
+    assert request.method is method
+    assert request.endpoint == f"admin/users/{USER_ID}/profiles/{PROFILE_ID}"
+    assert request.json_body is None
+
+
+@pytest.mark.parametrize("command", ["assign", "unassign"])
+def test_profile_assignment_commands_report_api_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    command: str,
+) -> None:
+    """Assignment API errors exit cleanly without a traceback."""
+    request_api = Mock(side_effect=APIError("Profile assignment failed."))
+    _mock_user_command_dependencies(monkeypatch, request_api)
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "admin",
+            "users",
+            command,
+            "--user",
+            USER_ID,
+            "--profile",
+            str(PROFILE_ID),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "Profile assignment failed." in result.output
+    assert "Traceback" not in result.output
+    request_api.assert_called_once()
 
 
 def test_create_user_reports_invalid_input_file(

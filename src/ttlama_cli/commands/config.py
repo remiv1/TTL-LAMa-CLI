@@ -1,5 +1,10 @@
 """Commands for TTL-LAMa CLI configuration.
 
+.. prefix:: `ttlama config`
+
+.. CLI::
+    - `set-server`: Configure the server for TTL-LAMa CLI.
+
 .. module_author:: Rémi Verschuur <rverschuur@audit-io.fr>
 .. version:: 1.0.0
 """

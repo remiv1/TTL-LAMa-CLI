@@ -1,0 +1,8 @@
+{
+    "name": "main2",
+    "default_duration": "20m",
+    "maximum_duration": "1h",
+    "networks": [
+        "172.16.0.0/12"
+    ]
+}

@@ -14,15 +14,15 @@ Le paquet est autonome dans le dépôt `cli/` et peut évoluer indépendamment d
 
 ## État du projet
 
-La CLI est en développement. Les commandes disponibles permettent de configurer l’adresse du serveur, de s’authentifier avec un compte interne, de consulter et fermer la session courante, de changer le mot de passe de l’utilisateur connecté et de gérer les utilisateurs et les profils. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
+La CLI est en développement. Les commandes disponibles permettent de configurer l’adresse du serveur, de s’authentifier avec un compte interne, de consulter et fermer la session courante, de changer le mot de passe de l’utilisateur connecté, de consulter son aperçu, ses profils, ses appareils et ses leases, et de gérer les utilisateurs et les profils. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
 
 | Groupe | Commandes disponibles | Commandes prévues |
 | --- | --- | --- |
 | `config` | `set-server` | — |
 | `auth` | `login internal`, `logout`, `password-chg`, `status` | `login external`, `login oidc` |
-| `user` | — | consultation de l’utilisateur, des appareils, des baux et des profils qui lui sont accessibles |
+| `user` | `get`, `profiles list`, `profiles get`, `devices list/get/add/delete`, `leases list/get/create/revoke` | — |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
-| `admin users` | `list`, `get`, `create`, `update`, `delete` | `assign`, `unassign` |
+| `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
 | `admin devices` | — | `list`, `get`, `update`, `block`, `delete` |
 | `admin leases` | — | `list`, `get`, `revoke` |
 | `admin profiles` | `list`, `get`, `create`, `update`, `delete` | — |
@@ -83,7 +83,7 @@ Le jeton d’accès est enregistré dans le trousseau système via `keyring`, da
 ## Organisation du code
 
 - `src/ttlama_cli/cli.py` déclare la commande `ttlama` et ses groupes.
-- `src/ttlama_cli/commands/` contient les commandes Typer, notamment `auth` et `config`.
+- `src/ttlama_cli/commands/` contient les commandes Typer, notamment `auth`, `config`, `admin` et `user`.
 - `src/ttlama_cli/api_client.py` effectue les appels HTTP à l’API.
 - `src/ttlama_cli/config_store.py` valide et persiste l’instance configurée.
 - `src/ttlama_cli/token_store.py` encapsule l’accès au trousseau système.
@@ -207,6 +207,11 @@ ttlama
 
 La sortie JSON ou YAML de `ttlama admin users get <user_id> --json` ou `--yaml` est un objet plat ne contenant que les champs modifiables renvoyés par l’API ; elle peut être passée directement à `update --user <user_id> --file`. La sortie de `list` reste une collection et ne constitue pas un corps de mise à jour. Les mots de passe ne sont jamais renvoyés ; ajoutez manuellement un champ `password` pour en modifier un.
 
+`ttlama admin users assign --user <user_id> --profile <profile_id>` rattache
+un profil à un utilisateur ; répéter la commande est sans effet supplémentaire.
+La commande `unassign` correspondante révoque le rattachement actif ainsi que
+les baux qui lui sont associés.
+
 ### Fichiers des commandes admin profiles
 
 `ttlama admin profiles create --file` accepte un objet JSON ou YAML UTF-8 contenant `name`, `default_duration`, `maximum_duration` et une liste non vide de réseaux CIDR sous `networks`. Les durées utilisent les unités `d`, `h`, `m` ou `s`, et la durée par défaut ne peut pas dépasser la durée maximale. Exemple :
@@ -219,4 +224,4 @@ networks:
       - 10.0.0.0/24
 ```
 
-`update --profile <profile_id> --file` accepte n’importe quel sous-ensemble de ces champs. Les sorties `get --profile <profile_id> --json` et `--yaml` sont un objet plat réutilisable avec `update --file`. Les filtres `--user`, `--device` et `--lease` de `list` se combinent avec AND. Pour un profil historique sans politique, `get` ne renvoie que le nom ; complétez les champs de politique avant de le modifier. La suppression révoque le profil ainsi que ses rattachements et baux dépendants.
+`update --profile <profile_id> --file` accepte n’importe quel sous-ensemble de ces champs. Les sorties `get --profile <profile_id> --json` et `--yaml` sont un objet plat réutilisable avec `update --file`. Les filtres `--user`, `--device` et `--lease` de `list` se combinent avec AND. Pour un profil historique sans politique, `get` ne renvoie que le nom ; complétez les champs de politique avant de le modifier. La suppression demande de saisir le nom complet du profil, puis révoque celui-ci ainsi que ses rattachements et baux dépendants.

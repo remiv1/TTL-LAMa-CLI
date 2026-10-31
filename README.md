@@ -14,15 +14,15 @@ The CLI lives in the `cli/` directory and can evolve independently of the server
 
 ## Project status
 
-The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, check and close the current session, change the signed-in user's password, and manage users and profiles. Commands marked as planned below are targets for future implementation, not commands that can be used today.
+The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, check and close the current session, change the signed-in user's password, inspect their overview, profiles, devices, and leases, and manage users and profiles. Commands marked as planned below are targets for future implementation, not commands that can be used today.
 
 | Group | Available commands | Planned commands |
 | --- | --- | --- |
 | `config` | `set-server` | — |
 | `auth` | `login internal`, `logout`, `password-chg`, `status` | `login external`, `login oidc` |
-| `user` | — | View the user, their devices and leases, and the profiles available to them |
+| `user` | `get`, `profiles list`, `profiles get`, `devices list/get/add/delete`, `leases list/get/create/revoke` | — |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
-| `admin users` | `list`, `get`, `create`, `update`, `delete` | `assign`, `unassign` |
+| `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
 | `admin devices` | — | `list`, `get`, `update`, `block`, `delete` |
 | `admin leases` | — | `list`, `get`, `revoke` |
 | `admin profiles` | `list`, `get`, `create`, `update`, `delete` | — |
@@ -83,7 +83,7 @@ The access token is stored in the system keyring through `keyring`, in one entry
 ## Code layout
 
 - `src/ttlama_cli/cli.py` defines the `ttlama` command and its groups.
-- `src/ttlama_cli/commands/` contains the Typer commands, including `auth` and `config`.
+- `src/ttlama_cli/commands/` contains the Typer commands, including `auth`, `config`, `admin`, and `user`.
 - `src/ttlama_cli/api_client.py` makes HTTP requests to the API.
 - `src/ttlama_cli/config_store.py` validates and persists the configured instance.
 - `src/ttlama_cli/token_store.py` encapsulates access to the system keyring.
@@ -192,6 +192,10 @@ ttlama
 
 The JSON or YAML output of `ttlama admin users get <user_id> --json` or `--yaml` is a flat object containing the editable fields returned by the API and can be passed directly to `update --user <user_id> --file`. List output remains a collection and is not an update body. Passwords are never returned; add a `password` field manually when changing one.
 
+`ttlama admin users assign --user <user_id> --profile <profile_id>` assigns a
+profile to a user; repeating the command is idempotent. The matching
+`unassign` command revokes the active assignment and its associated leases.
+
 ### Admin profile files
 
 `ttlama admin profiles create --file` accepts a UTF-8 JSON or YAML object with `name`, `default_duration`, `maximum_duration`, and a non-empty `networks` list of CIDRs. Durations use `d`, `h`, `m`, or `s` units, and the default cannot exceed the maximum. For example:
@@ -204,4 +208,4 @@ networks:
       - 10.0.0.0/24
 ```
 
-`update --profile <profile_id> --file` accepts any subset of those fields. `get --profile <profile_id> --json` and `--yaml` output a flat object that can be passed to `update --file`; `list` filters `--user`, `--device`, and `--lease` are combined with AND. Historical profiles without a policy return only their name, so add the complete policy fields before updating one. Deleting a profile revokes it and its dependent assignments and leases.
+`update --profile <profile_id> --file` accepts any subset of those fields. `get --profile <profile_id> --json` and `--yaml` output a flat object that can be passed to `update --file`; `list` filters `--user`, `--device`, and `--lease` are combined with AND. Historical profiles without a policy return only their name, so add the complete policy fields before updating one. Deleting a profile requires typing its full name, then revokes it and its dependent assignments and leases.

@@ -17,6 +17,12 @@
         - `--file`: path to a JSON or YAML file containing the user data.
     - `delete`: delete a user.
         - `--user`: ID of the user to delete.
+    - `assign`: assign a profile to a user.
+        - `--user`: ID of the user.
+        - `--profile`: ID of the profile.
+    - `unassign`: revoke a user's profile assignment.
+        - `--user`: ID of the user.
+        - `--profile`: ID of the profile.
 
 .. module_author:: Rémi Verschuur <rverschuur@audit-io.fr>
 .. version:: 1.0.0
@@ -28,17 +34,25 @@ from pathlib import Path
 from typing import cast
 
 import typer
-from yaml import YAMLError
 from rich.console import Console
 from rich.table import Table
 
-from ...config_store import load_server_config
-from ...token_store import get_access_token
+from .. import (
+    display_structured_output,
+    get_server_and_token as _get_server_and_token,
+    load_data_file as _load_data_file,
+    validate_output_options,
+)
 from ...api_client import request_api
 from ...objects import HTTPMethod, SpecificRequest, ServerParameters
 from ...objects.requests import JSONValue
-from ...exc import AuthorizationError, APIError, AuthenticationError, handle_api_error
-from ...utils import json_to_yaml, yaml_to_json
+from ...exc import (
+    APIError,
+    AuthenticationError,
+    AuthorizationError,
+    handle_api_error,
+)
+from ...utils import json_to_yaml
 
 users_app = typer.Typer(
     no_args_is_help=True,
@@ -48,53 +62,15 @@ users_app = typer.Typer(
 EDITABLE_USER_FIELDS = {"username", "email", "enabled", "is_admin"}
 
 
-def _get_server_and_token() -> tuple[str, int, str]:
-    """Retrieve the server URL, port, and access token.
-
-    :return: Tuple containing server URL, server port, and access token.
-    :rtype: tuple[str, int, str]
-    :raises typer.Exit: If there is an error loading the server configuration or
-    retrieving the access token.
-    """
-    try:
-        url, port = load_server_config()
-    except (FileNotFoundError, ValueError) as e:
-        typer.echo(f"Error loading server configuration: {e}")
-        raise typer.Exit(code=1) from e
-
-    try:
-        token = get_access_token(url, port)
-        if not token:
-            raise ValueError("Access token is empty.")
-    except Exception as e:
-        typer.echo(f"Error retrieving access token: {e}")
-        raise typer.Exit(code=1) from e
-
-    return url, port, token
-
-
 def _load_user_file(file_path: Path) -> dict[str, JSONValue]:
-    """Load a user request body from a JSON or YAML file."""
-    try:
-        contents = file_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as error:
-        typer.echo(f"Error reading user data file '{file_path}': {error}")
-        raise typer.Exit(code=1) from error
+    """Load a user request body from a JSON or YAML file.
 
-    try:
-        data = json.loads(yaml_to_json(contents))
-    except (TypeError, ValueError, YAMLError) as error:
-        typer.echo(
-            f"Error parsing user data file '{file_path}': "
-            "expected valid JSON or YAML."
-        )
-        raise typer.Exit(code=1) from error
-
-    if not isinstance(data, dict):
-        typer.echo("User data file must contain an object at the top level.")
-        raise typer.Exit(code=1)
-
-    return cast(dict[str, JSONValue], data)
+    :param file_path: Path to the JSON or YAML user data file.
+    :type file_path: Path
+    :returns: Dictionary representing the user request body.
+    :rtype: dict[str, JSONValue]
+    """
+    return _load_data_file(file_path, "user")
 
 
 def _create_filters(
@@ -152,7 +128,20 @@ def list_users(
         help="Output the list of users in YAML format."
     ),
 ) -> None:
-    """Manage users in the TTL-LAMa CLI."""
+    """Manage users in the TTL-LAMa CLI.
+
+    :param device: Filter by device ID.
+    :type device: int | None
+    :param lease: Filter by lease ID.
+    :type lease: int | None
+    :param profile: Filter by profile ID.
+    :type profile: int | None
+    :param json_output: Whether to output the list of users in JSON format.
+    :type json_output: bool
+    :param yaml_output: Whether to output the list of users in YAML format.
+    :type yaml_output: bool
+    """
+    validate_output_options(json_output, yaml_output)
     url, port, token = _get_server_and_token()
     filters = _create_filters(device=device, lease=lease, profile=profile)
     users = None
@@ -178,15 +167,13 @@ def list_users(
         handle_api_error(e)
 
     user_rows = cast(list[dict[str, object]], users)
-    if json_output:
-        typer.echo(json.dumps(user_rows, ensure_ascii=False, indent=4))
-        raise typer.Exit()
-
-    if yaml_output:
-        typer.echo(json_to_yaml(json.dumps(
-            {"users": user_rows}, ensure_ascii=False, indent=4
-        )))
-        raise typer.Exit()
+    if display_structured_output(
+        user_rows,
+        json_output=json_output,
+        yaml_output=yaml_output,
+        yaml_root="users",
+    ):
+        return
 
     typer.echo()
     table = Table(title="Users", expand=True)
@@ -213,7 +200,11 @@ def create_user(
         help="Path to a JSON or YAML file containing user data.",
     ),
 ) -> None:
-    """Create a user from a JSON or YAML file."""
+    """Create a user from a JSON or YAML file.
+
+    :param file_path: Path to a JSON or YAML file containing user data.
+    :type file_path: Path
+    """
     user_data = _load_user_file(file_path)
     url, port, token = _get_server_and_token()
 
@@ -253,7 +244,13 @@ def update_user(
         help="Path to a JSON or YAML file containing fields to update.",
     ),
 ) -> None:
-    """Update a user from a JSON or YAML file."""
+    """Update a user from a JSON or YAML file.
+
+    :param user_id: The ID of the user to update.
+    :type user_id: str
+    :param file_path: Path to a JSON or YAML file containing fields to update.
+    :type file_path: Path
+    """
     user_data = _load_user_file(file_path)
     url, port, token = _get_server_and_token()
 
@@ -282,7 +279,15 @@ def delete_user(
         help="Specify the ID of the user to delete.",
     ),
 ) -> None:
-    """Delete a user by ID."""
+    """Delete a user by ID.
+
+    :param user_id: The ID of the user to delete.
+    :type user_id: str
+
+    .. note::
+        This is a logical deletion; the user will be marked as deleted but not permanently
+        removed from the database. Until then, the user record will remain in the system.
+    """
     url, port, token = _get_server_and_token()
 
     request = SpecificRequest(
@@ -299,6 +304,80 @@ def delete_user(
         handle_api_error(error)
 
     typer.echo(f"User {user_id} deleted successfully.")
+
+
+@users_app.command("assign")
+def assign_profile(
+    user_id: str = typer.Option(
+        ...,
+        "--user",
+        help="Specify the ID of the user to assign the profile to.",
+    ),
+    profile_id: int = typer.Option(
+        ...,
+        "--profile",
+        help="Specify the ID of the profile to assign.",
+    ),
+) -> None:
+    """Assign a profile to a user.
+
+    :param user_id: The ID of the user to assign the profile to.
+    :type user_id: str
+    :param profile_id: The ID of the profile to assign.
+    :type profile_id: int
+    """
+    url, port, token = _get_server_and_token()
+    request = SpecificRequest(
+        method=HTTPMethod.PUT,
+        endpoint=f"admin/users/{user_id}/profiles/{profile_id}",
+    )
+    try:
+        request_api(
+            server=ServerParameters(server_url=url, server_port=port),
+            token=token,
+            specific_request=request,
+        )
+    except (AuthorizationError, AuthenticationError, APIError) as error:
+        handle_api_error(error)
+
+    typer.echo(f"Profile {profile_id} assigned to user {user_id} successfully.")
+
+
+@users_app.command("unassign")
+def unassign_profile(
+    user_id: str = typer.Option(
+        ...,
+        "--user",
+        help="Specify the ID of the user to unassign the profile from.",
+    ),
+    profile_id: int = typer.Option(
+        ...,
+        "--profile",
+        help="Specify the ID of the profile to unassign.",
+    ),
+) -> None:
+    """Revoke a profile assignment from a user.
+
+    :param user_id: The ID of the user to unassign the profile from.
+    :type user_id: str
+    :param profile_id: The ID of the profile to unassign.
+    :type profile_id: int
+    """
+    url, port, token = _get_server_and_token()
+    request = SpecificRequest(
+        method=HTTPMethod.DELETE,
+        endpoint=f"admin/users/{user_id}/profiles/{profile_id}",
+    )
+    try:
+        request_api(
+            server=ServerParameters(server_url=url, server_port=port),
+            token=token,
+            specific_request=request,
+        )
+    except (AuthorizationError, AuthenticationError, APIError) as error:
+        handle_api_error(error)
+
+    typer.echo(f"Profile {profile_id} unassigned from user {user_id} successfully.")
 
 
 @users_app.command("get")
@@ -318,7 +397,15 @@ def get_user(
         help="Output the user information in YAML format."
     ),
 ) -> None:
-    """Get a specific user in the TTL-LAMa CLI."""
+    """Get a specific user in the TTL-LAMa CLI.
+
+    :param user_id: The ID of the user to retrieve.
+    :type user_id: str
+    :param json_output: Whether to output the user information in JSON format.
+    :type json_output: bool
+    :param yaml_output: Whether to output the user information in YAML format.
+    :type yaml_output: bool
+    """
     url, port, token = _get_server_and_token()
 
     request = SpecificRequest(

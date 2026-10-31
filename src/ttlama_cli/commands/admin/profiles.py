@@ -19,21 +19,24 @@ from typing import cast
 import typer
 from rich.console import Console
 from rich.table import Table
-from yaml import YAMLError
 
+from .. import (
+    display_profiles as _display_profiles,
+    get_server_and_token as _get_server_and_token,
+    load_data_file as _load_data_file,
+    profile_rows as _profile_rows,
+    validate_output_options,
+)
 from ...api_client import request_api
-from ...config_store import load_server_config
 from ...exc import (
     APIError,
     AuthenticationError,
     AuthorizationError,
-    TokenStorageError,
     handle_api_error,
 )
 from ...objects import HTTPMethod, ServerParameters, SpecificRequest
 from ...objects.requests import JSONValue
-from ...token_store import get_access_token
-from ...utils import json_to_yaml, yaml_to_json
+from ...utils import json_to_yaml
 
 profiles_app = typer.Typer(
     no_args_is_help=True,
@@ -41,41 +44,15 @@ profiles_app = typer.Typer(
 )
 
 
-def _get_server_and_token() -> tuple[str, int, str]:
-    """Retrieve the configured server and its access token."""
-    try:
-        server_url, server_port = load_server_config()
-        token = get_access_token(server_url, server_port)
-        if not token:
-            raise TokenStorageError("No access token is stored for this server.")
-    except (FileNotFoundError, ValueError, TokenStorageError) as error:
-        typer.echo(f"Error retrieving server credentials: {error}", err=True)
-        raise typer.Exit(code=1) from error
-    return server_url, server_port, token
-
-
 def _load_profile_file(file_path: Path) -> dict[str, JSONValue]:
-    """Load a profile request body from a JSON or YAML file."""
-    try:
-        contents = file_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError) as error:
-        typer.echo(f"Error reading profile data file '{file_path}': {error}", err=True)
-        raise typer.Exit(code=1) from error
+    """Load a profile request body from a JSON or YAML file.
 
-    try:
-        data = json.loads(yaml_to_json(contents))
-    except (TypeError, ValueError, YAMLError) as error:
-        typer.echo(
-            f"Error parsing profile data file '{file_path}': "
-            "expected valid JSON or YAML.",
-            err=True,
-        )
-        raise typer.Exit(code=1) from error
-
-    if not isinstance(data, dict):
-        typer.echo("Profile data file must contain an object at the top level.", err=True)
-        raise typer.Exit(code=1)
-    return cast(dict[str, JSONValue], data)
+    :param file_path: The path to the JSON or YAML file containing the profile data.
+    :type file_path: Path
+    :returns: The loaded profile data as a dictionary.
+    :rtype: dict[str, JSONValue]
+    """
+    return _load_data_file(file_path, "profile")
 
 
 def _create_filters(
@@ -83,7 +60,17 @@ def _create_filters(
     device: int | None = None,
     lease: int | None = None,
 ) -> dict[str, str | int] | None:
-    """Create combined profile relationship filters."""
+    """Create combined profile relationship filters.
+
+    :param user: Filter by assigned user UUID.
+    :type user: str | None
+    :param device: Filter by device ID.
+    :type device: int | None
+    :param lease: Filter by lease ID.
+    :type lease: int | None
+    :returns: A dictionary of filters or None if no filters are set.
+    :rtype: dict[str, str | int] | None
+    """
     filters = {
         key: value
         for key, value in {"user": user, "device": device, "lease": lease}.items()
@@ -92,18 +79,14 @@ def _create_filters(
     return filters or None
 
 
-def _profile_rows(response: object) -> list[dict[str, object]]:
-    """Validate the list response returned by the profile API."""
-    if not isinstance(response, list):
-        raise APIError("The API response isn't a profile list.")
-    rows = cast(list[object], response)
-    if any(not isinstance(row, dict) for row in rows):
-        raise APIError("The API response isn't a profile list.")
-    return cast(list[dict[str, object]], rows)
-
-
 def _profile_update_data(response: object) -> dict[str, JSONValue]:
-    """Flatten a profile response into fields accepted by the update API."""
+    """Flatten a profile response into fields accepted by the update API.
+
+    :param response: The profile response object from the API.
+    :type response: object
+    :returns: A dictionary of fields suitable for the update API.
+    :rtype: dict[str, JSONValue]
+    """
     if not isinstance(response, dict):
         raise APIError("The API response isn't a profile.")
     profile = cast(dict[str, object], response)
@@ -141,52 +124,6 @@ def _profile_update_data(response: object) -> dict[str, JSONValue]:
     return update_data
 
 
-def _display_profiles(
-    profiles: list[dict[str, object]],
-    *,
-    json_output: bool,
-    yaml_output: bool,
-) -> None:
-    """Display profiles as JSON, YAML, or a Rich table."""
-    if json_output:
-        typer.echo(json.dumps(profiles, ensure_ascii=False, indent=4))
-        return
-    if yaml_output:
-        typer.echo(json_to_yaml(json.dumps({"profiles": profiles}, ensure_ascii=False)))
-        return
-
-    table = Table(title="Profiles", expand=True)
-    table.add_column("Profile ID", style="cyan", no_wrap=True)
-    table.add_column("Name", style="green", overflow="ellipsis")
-    table.add_column("Default duration")
-    table.add_column("Maximum duration")
-    table.add_column("Networks")
-    table.add_column("Status")
-    for profile in profiles:
-        policy_value = profile.get("policy")
-        policy = (
-            cast(dict[str, object], policy_value)
-            if isinstance(policy_value, dict)
-            else {}
-        )
-        networks_value = policy.get("networks")
-        network_count = (
-            len(cast(list[object], networks_value))
-            if isinstance(networks_value, list)
-            else 0
-        )
-        status = "revoked" if profile.get("revoked_at") is not None else "active"
-        table.add_row(
-            str(profile.get("id", "")),
-            str(profile.get("name", "")),
-            str(policy.get("default_duration", "-")),
-            str(policy.get("maximum_duration", "-")),
-            str(network_count),
-            status,
-        )
-    Console().print(table)
-
-
 @profiles_app.command("list")
 def list_profiles(
     user: str | None = typer.Option(None, "--user", help="Filter by assigned user UUID."),
@@ -195,10 +132,20 @@ def list_profiles(
     json_output: bool = typer.Option(False, "--json", help="Output profiles as JSON."),
     yaml_output: bool = typer.Option(False, "--yaml", help="Output profiles as YAML."),
 ) -> None:
-    """List profiles, optionally filtered by user, device, or lease."""
-    if json_output and yaml_output:
-        typer.echo("Choose only one output option: --json or --yaml.", err=True)
-        raise typer.Exit(code=1)
+    """List profiles, optionally filtered by user, device, or lease.
+
+    :param user: Filter by assigned user UUID.
+    :type user: str | None
+    :param device: Filter by device ID.
+    :type device: int | None
+    :param lease: Filter by lease ID.
+    :type lease: int | None
+    :param json_output: Whether to output the profiles as JSON.
+    :type json_output: bool
+    :param yaml_output: Whether to output the profiles as YAML.
+    :type yaml_output: bool
+    """
+    validate_output_options(json_output, yaml_output)
 
     server_url, server_port, token = _get_server_and_token()
     try:
@@ -228,10 +175,16 @@ def get_profile(
     json_output: bool = typer.Option(False, "--json", help="Output the profile as JSON."),
     yaml_output: bool = typer.Option(False, "--yaml", help="Output the profile as YAML."),
 ) -> None:
-    """Retrieve a profile and display its updateable fields."""
-    if json_output and yaml_output:
-        typer.echo("Choose only one output option: --json or --yaml.", err=True)
-        raise typer.Exit(code=1)
+    """Retrieve a profile and display its updateable fields.
+
+    :param profile_id: The ID of the profile to retrieve.
+    :type profile_id: int
+    :param json_output: Whether to output the profile as JSON.
+    :type json_output: bool
+    :param yaml_output: Whether to output the profile as YAML.
+    :type yaml_output: bool
+    """
+    validate_output_options(json_output, yaml_output)
 
     server_url, server_port, token = _get_server_and_token()
     try:
@@ -272,7 +225,11 @@ def get_profile(
 def create_profile(
     file_path: Path = typer.Option(..., "--file", help="JSON or YAML profile data file."),
 ) -> None:
-    """Create a profile from a JSON or YAML file."""
+    """Create a profile from a JSON or YAML file.
+
+    :param file_path: Path to the JSON or YAML profile data file.
+    :type file_path: Path
+    """
     profile_data = _load_profile_file(file_path)
     server_url, server_port, token = _get_server_and_token()
     try:
@@ -296,7 +253,13 @@ def update_profile(
     profile_id: int = typer.Option(..., "--profile", help="Profile ID to update."),
     file_path: Path = typer.Option(..., "--file", help="JSON or YAML fields to update."),
 ) -> None:
-    """Update a profile from a JSON or YAML file."""
+    """Update a profile from a JSON or YAML file.
+
+    :param profile_id: The ID of the profile to update.
+    :type profile_id: int
+    :param file_path: Path to the JSON or YAML fields to update.
+    :type file_path: Path
+    """
     profile_data = _load_profile_file(file_path)
     server_url, server_port, token = _get_server_and_token()
     try:
@@ -319,8 +282,37 @@ def update_profile(
 def delete_profile(
     profile_id: int = typer.Option(..., "--profile", help="Profile ID to revoke."),
 ) -> None:
-    """Revoke a profile and its dependent access."""
+    """Revoke a profile and its dependent access.
+
+    :param profile_id: The ID of the profile to revoke.
+    :type profile_id: int
+    """
     server_url, server_port, token = _get_server_and_token()
+    try:
+        profile = request_api(
+            server=ServerParameters(server_url=server_url, server_port=server_port),
+            token=token,
+            specific_request=SpecificRequest(
+                method=HTTPMethod.GET,
+                endpoint=f"admin/profiles/{profile_id}",
+            ),
+        )
+        if not isinstance(profile, dict):
+            raise APIError("The API response isn't a profile.")
+        profile_name = profile.get("name")
+        if not isinstance(profile_name, str):
+            raise APIError("The API profile response has no valid name.")
+    except (AuthorizationError, AuthenticationError, APIError) as error:
+        handle_api_error(error)
+        return
+
+    confirmation = typer.prompt(
+        f"Type the full profile name to confirm revocation of '{profile_name}'"
+    )
+    if confirmation != profile_name:
+        typer.echo("Profile name did not match; profile was not revoked.", err=True)
+        raise typer.Exit(code=1)
+
     try:
         request_api(
             server=ServerParameters(server_url=server_url, server_port=server_port),

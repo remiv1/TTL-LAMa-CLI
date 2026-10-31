@@ -182,20 +182,44 @@ def test_create_profile_sends_yaml_file(
 def test_delete_profile_sends_revoke_request(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Delete uses the API's profile revocation endpoint."""
-    request_api = Mock(return_value=None)
+    """Delete requires the exact profile name before sending the revoke request."""
+    request_api = Mock(side_effect=[PROFILE_RESPONSE, None])
     _mock_profile_command_dependencies(monkeypatch, request_api)
 
     result = CliRunner().invoke(
         app,
         ["admin", "profiles", "delete", "--profile", str(PROFILE_ID)],
+        input="office-access\n",
     )
 
     assert result.exit_code == 0
     assert "revoked successfully" in result.output
+    get_request = _get_request(request_api, 0)
+    assert get_request.method is HTTPMethod.GET
+    assert get_request.endpoint == f"admin/profiles/{PROFILE_ID}"
+    delete_request = _get_request(request_api, 1)
+    assert delete_request.method is HTTPMethod.DELETE
+    assert delete_request.endpoint == f"admin/profiles/{PROFILE_ID}"
+
+
+def test_delete_profile_cancels_when_name_does_not_match(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A non-matching confirmation prevents the profile from being revoked."""
+    request_api = Mock(return_value=PROFILE_RESPONSE)
+    _mock_profile_command_dependencies(monkeypatch, request_api)
+
+    result = CliRunner().invoke(
+        app,
+        ["admin", "profiles", "delete", "--profile", str(PROFILE_ID)],
+        input="office\n",
+    )
+
+    assert result.exit_code == 1
+    assert "profile was not revoked" in result.output
+    assert request_api.call_count == 1
     request = _get_request(request_api)
-    assert request.method is HTTPMethod.DELETE
-    assert request.endpoint == f"admin/profiles/{PROFILE_ID}"
+    assert request.method is HTTPMethod.GET
 
 
 def test_create_profile_rejects_non_object_file_before_api_call(

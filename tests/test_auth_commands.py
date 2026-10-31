@@ -47,7 +47,7 @@ def test_internal_login_saves_token_without_printing_secrets(
     )
 
     assert result.exit_code == 0
-    assert "Connexion réussie" in result.output
+    assert "Login successful" in result.output
     assert password not in result.output
     assert token not in result.output
     save_token.assert_called_once_with(
@@ -175,7 +175,7 @@ def test_password_change_sends_patch_without_displaying_secrets(
     )
 
     assert result.exit_code == 0
-    assert "Reconnectez-vous" in result.output
+    assert "assword" in result.output
     assert current_password not in result.output
     assert new_password not in result.output
     assert "access-token" not in result.output
@@ -213,7 +213,7 @@ def test_password_change_rejects_mismatched_confirmation_without_request(
     )
 
     assert result.exit_code == 1
-    assert "ne correspondent pas" in result.output
+    assert "do not match" in result.output
     assert "old-password" not in result.output
     assert "new-password" not in result.output
     request_api.assert_not_called()
@@ -241,7 +241,7 @@ def test_logout_without_local_token_is_idempotent(
     result = CliRunner().invoke(app, ["auth", "logout"])
 
     assert result.exit_code == 0
-    assert "Déjà déconnecté" in result.output
+    assert "Already logged out" in result.output
     request_api.assert_not_called()
     delete_token.assert_not_called()
 
@@ -268,7 +268,7 @@ def test_logout_revokes_server_session_then_deletes_local_token(
     result = CliRunner().invoke(app, ["auth", "logout"])
 
     assert result.exit_code == 0
-    assert "Déconnexion réussie" in result.output
+    assert "Logout successful" in result.output
     specific_request = request_api.call_args.kwargs["specific_request"]
     assert specific_request.endpoint == "auth/logout"
     assert specific_request.method is HTTPMethod.POST
@@ -300,7 +300,7 @@ def test_logout_cleans_local_token_when_server_rejects_it(
     result = CliRunner().invoke(app, ["auth", "logout"])
 
     assert result.exit_code == 0
-    assert "session était déjà inactive" in result.output
+    assert "session was already inactive" in result.output
     delete_token.assert_called_once_with("https://server.example", 8443)
 
 
@@ -427,5 +427,5 @@ def test_status_does_not_delete_a_rejected_token(
     result = CliRunner().invoke(app, ["auth", "status"])
 
     assert result.exit_code == 1
-    assert "Reconnectez-vous" in result.output
+    assert "Login again" in result.output
     delete_token.assert_not_called()

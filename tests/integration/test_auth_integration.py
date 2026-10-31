@@ -77,7 +77,7 @@ def test_internal_login_against_server_saves_token(
     )
 
     assert result.exit_code == 0, result.output
-    assert "Connexion réussie" in result.output
+    assert "Login successful" in result.output
     assert password not in result.output
 
     token = token_store.get_access_token(server_url, server_port)

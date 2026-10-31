@@ -1,5 +1,7 @@
-email: rverschuur@audit-io.fr
-enabled: true
-is_admin: false
-username: remi.verschuur
-
+name: user
+default_duration: 8h
+maximum_duration: 24h
+networks:
+- 192.168.0.0/16
+- 10.0.0.0/16
+- 172.16.0.0/16
