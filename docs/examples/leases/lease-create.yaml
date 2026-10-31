@@ -1,0 +1,7 @@
+# ttlama user leases create --file lease-create.yaml
+# device_id and profile_id are required positive integers; the profile must be
+# assigned to the user. duration is optional (profile default_duration is used
+# when omitted) and cannot exceed the profile maximum_duration.
+device_id: 1
+profile_id: 1
+duration: 2h

@@ -1,0 +1,9 @@
+{
+    "name": "office-access",
+    "default_duration": "1h",
+    "maximum_duration": "8h",
+    "networks": [
+        "10.0.0.0/24",
+        "192.168.10.0/24"
+    ]
+}

@@ -1,0 +1,5 @@
+# ttlama admin users update --user <user_id> --file user-update.yaml
+# Only the supplied fields are updated. Use `email: null` to clear the email.
+email: john.doe@example.com
+enabled: false
+is_admin: true

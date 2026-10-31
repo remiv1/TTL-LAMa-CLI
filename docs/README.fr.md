@@ -201,6 +201,10 @@ ttlama
             └── delete --profile <profile_id>
 ```
 
+### Exemples de fichiers d’entrée
+
+Des exemples JSON et YAML prêts à l’emploi pour chaque commande `--file` sont disponibles dans [examples/](./examples/) : utilisateurs (`users/user-create`, `users/user-update`), profils (`profiles/profile-create`, `profiles/profile-update`), appareils (`devices/device-add`, `devices/device-update`) et baux (`leases/lease-create`).
+
 ### Fichiers des commandes admin users
 
 `ttlama admin users create --file` et `update --user <user_id> --file` acceptent des objets JSON ou YAML encodés en UTF-8. La création exige `username` ; `email`, `enabled`, `is_admin` et `password` sont facultatifs. Pour une mise à jour, le fichier contient uniquement les champs à modifier ; utilisez `email: null` pour effacer l’adresse e-mail. Le mot de passe présent dans le fichier est envoyé à l’API, mais n’est jamais affiché par la CLI. Si aucun mot de passe n’est fourni et que le serveur utilise l’authentification interne, l’API en génère un et la CLI ne l’affiche que dans la réponse de création ; conservez-le immédiatement, car il ne sera plus récupérable. Sans authentification interne, aucun identifiant interne n’est créé si le mot de passe est absent.

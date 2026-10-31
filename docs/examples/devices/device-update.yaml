@@ -1,0 +1,4 @@
+# ttlama admin devices update --device <device_id> --file device-update.yaml
+# Only name and public_key can be changed; ownership cannot be reassigned.
+name: work-laptop
+public_key: "<new-device-public-key>"

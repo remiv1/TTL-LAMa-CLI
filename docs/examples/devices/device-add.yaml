@@ -1,0 +1,4 @@
+# ttlama user devices add --file device-add.yaml
+# Both fields are required.
+name: personal-laptop
+public_key: "<device-public-key>"

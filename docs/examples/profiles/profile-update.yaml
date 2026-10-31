@@ -1,0 +1,6 @@
+# ttlama admin profiles update --profile <profile_id> --file profile-update.yaml
+# Any subset of name, default_duration, maximum_duration and networks.
+# The merged policy must stay valid (default <= maximum, networks not empty).
+maximum_duration: 12h
+networks:
+  - 10.0.0.0/16

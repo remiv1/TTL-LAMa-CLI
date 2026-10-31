@@ -1,0 +1,10 @@
+# ttlama admin profiles create --file profile-create.yaml
+# All fields are required. Durations use d, h, m or s units and
+# default_duration cannot exceed maximum_duration. networks is a non-empty
+# list of CIDRs (IPv4 or IPv6).
+name: office-access
+default_duration: 1h
+maximum_duration: 8h
+networks:
+  - 10.0.0.0/24
+  - 192.168.10.0/24
