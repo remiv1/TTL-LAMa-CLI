@@ -19,11 +19,11 @@ The CLI is under development. Currently available commands let you configure the
 | Group | Available commands | Planned commands |
 | --- | --- | --- |
 | `config` | `set-server` | — |
-| `auth` | `login internal`, `logout`, `password-chg`, `status` | `login external`, `login oidc` |
+| `auth` | `login internal`, `logout`, `password-chg`, `status` | `login oidc` |
 | `user` | `get`, `profiles list`, `profiles get`, `devices list/get/add/delete`, `leases list/get/create/revoke` | — |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
 | `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
-| `admin devices` | — | `list`, `get`, `update`, `block`, `delete` |
+| `admin devices` | `list`, `get`, `update`, `block`, `delete` | — |
 | `admin leases` | — | `list`, `get`, `revoke` |
 | `admin profiles` | `list`, `get`, `create`, `update`, `delete` | — |
 
@@ -117,7 +117,6 @@ ttlama
  ├── auth → **Authentication** → **_Who am I ?_**
  │    ├── login
  │    │     ├── internal --user <username>
- │    │     ├── external --user <username>
  │    │     └── oidc --user <username>
  │    │
  │    ├── logout
@@ -152,7 +151,7 @@ ttlama
  └── admin → **Administration** → **_Who has what rights / What is the administered state ?_**
       │
       ├── users
-      │     ├── list [--device <device_id> &/| --lease <lease_id> &/| --profile <profile_id> | none]
+      │     ├── list [--device <device_id> | none ] [--lease <lease_id> | none ] [--profile <profile_id> | none]
       │     ├── get --user <user_id>
       │     ├── create --file <file_path>
       │     ├── update --user <user_id> --file <file_path>
@@ -161,20 +160,14 @@ ttlama
       │     └── unassign --user <user_id> --profile <profile_id>
       │
       ├── devices
-      │     ├── list [--lease <lease_id> | --profile <profile_id> | none]
+      │     ├── list [--lease <lease_id> | none ] [--profile <profile_id> | none]
       │     ├── get --device <device_id>
       │     ├── update --device <device_id> --file <file_path>
       │     ├── block --device <device_id>
       │     └── delete --device <device_id>
       │
       ├── leases
-      │     ├── list [
-      │     │         --user <user_id>
-      │     │     &/| --device <device_id>
-      │     │     &/| --profile <profile_id>
-      │     │     &/| --status <status>
-      │     │     | none
-      │     │     ]
+      │     ├── list [--user <user_id> | none ] [--device <device_id> | none ] [--profile <profile_id> | none ] [--status <status> | none]
       │     ├── get --lease <lease_id>
       │     └── revoke --lease <lease_id>
       │
@@ -199,6 +192,12 @@ The JSON or YAML output of `ttlama admin users get <user_id> --json` or `--yaml`
 `ttlama admin users assign --user <user_id> --profile <profile_id>` assigns a
 profile to a user; repeating the command is idempotent. The matching
 `unassign` command revokes the active assignment and its associated leases.
+
+### Admin device files
+
+`ttlama admin devices update --device <device_id> --file` accepts a UTF-8 JSON or YAML object with one or both of `name` and `public_key`. Device ownership and lifecycle fields cannot be changed. The JSON or YAML output of `ttlama admin devices get --device <device_id> --json` or `--yaml` contains only those editable fields and can be passed directly to `update --file`. The default console view shows the complete device record; the list table omits public keys, while structured list output contains the full API records. The `list` filters `--lease` and `--profile` can be combined.
+
+Both `block` and `delete` ask for confirmation and revoke the device's active leases. `block` marks the device as blocked; `delete` is a logical deletion that retains the device history.
 
 ### Admin profile files
 

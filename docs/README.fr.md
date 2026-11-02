@@ -19,11 +19,11 @@ La CLI est en développement. Les commandes disponibles permettent de configurer
 | Groupe | Commandes disponibles | Commandes prévues |
 | --- | --- | --- |
 | `config` | `set-server` | — |
-| `auth` | `login internal`, `logout`, `password-chg`, `status` | `login external`, `login oidc` |
+| `auth` | `login internal`, `logout`, `password-chg`, `status` | `login oidc` |
 | `user` | `get`, `profiles list`, `profiles get`, `devices list/get/add/delete`, `leases list/get/create/revoke` | — |
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
 | `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
-| `admin devices` | — | `list`, `get`, `update`, `block`, `delete` |
+| `admin devices` | `list`, `get`, `update`, `block`, `delete` | — |
 | `admin leases` | — | `list`, `get`, `revoke` |
 | `admin profiles` | `list`, `get`, `create`, `update`, `delete` | — |
 
@@ -132,7 +132,6 @@ ttlama
  ├── auth → **Authentification** → **_Qui suis-je ?_**
  │    ├── login
  │    │     ├── internal --user <username>
- │    │     ├── external --user <username>
  │    │     └── oidc --user <username>
  │    │
  │    ├── logout
@@ -215,6 +214,12 @@ La sortie JSON ou YAML de `ttlama admin users get <user_id> --json` ou `--yaml` 
 un profil à un utilisateur ; répéter la commande est sans effet supplémentaire.
 La commande `unassign` correspondante révoque le rattachement actif ainsi que
 les baux qui lui sont associés.
+
+### Fichiers des commandes admin devices
+
+`ttlama admin devices update --device <device_id> --file` accepte un objet JSON ou YAML UTF-8 contenant un ou deux des champs `name` et `public_key`. La propriété et le cycle de vie de l’appareil ne sont pas modifiables. Les sorties JSON et YAML de `ttlama admin devices get --device <device_id> --json` ou `--yaml` ne contiennent que ces champs modifiables et peuvent être réutilisées avec `update --file`. L’affichage console par défaut présente la fiche complète ; le tableau de `list` omet les clés publiques, contrairement à ses sorties structurées qui reprennent les objets complets de l’API. Les filtres `--lease` et `--profile` de `list` sont combinables.
+
+Les commandes `block` et `delete` demandent toutes deux une confirmation et révoquent les baux actifs de l’appareil. `block` bloque l’appareil ; `delete` correspond à une suppression logique qui conserve son historique.
 
 ### Fichiers des commandes admin profiles
 
