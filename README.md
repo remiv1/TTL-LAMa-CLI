@@ -21,7 +21,7 @@ The CLI is under development. Currently available commands let you configure the
 | `config` | `set-server` | — |
 | `auth` | `login internal`, `logout`, `password-chg`, `status` | `login oidc` |
 | `user` | `get`, `profiles list`, `profiles get`, `devices list/get/add/delete`, `leases list/get/create/revoke` | — |
-| `global-config` | — | `get`, `diff`, `validate`, `apply` |
+| `global-config` | `get`, `diff`, `validate`, `apply` | — |
 | `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
 | `admin devices` | `list`, `get`, `update`, `block`, `delete` | — |
 | `admin leases` | `list`, `get`, `revoke` | — |
@@ -35,6 +35,31 @@ Administrators can list leases using any combination of `--user`, `--device`, `-
 ttlama admin leases list --status active --yaml
 ttlama admin leases get --lease 73 --json
 ttlama admin leases revoke --lease 73
+```
+
+### Global configuration
+
+`ttlama global-config get` reads the server's application YAML document;
+`--json` and `--yaml` emit the raw document structure. Direct secret values are
+shown as `[REDACTED]`. `diff --file` compares a local JSON or YAML candidate
+with the current file, and `--check-all` also lists unchanged values.
+`validate --file` asks the server to validate a candidate without writing it.
+`apply --file` displays the changes and asks for confirmation; `--dry-run`
+validates and displays the diff without applying it.
+
+This group writes only the application configuration file selected by the
+server's `TTL_LAMA_CONFIG_FILE` setting. It does not manage profile definitions,
+`access-profiles.yml`, or profile policies in the database. Replace masked
+secrets with values or secret-file references before applying. Environment
+variables continue to override YAML settings. Applying a file requires an
+external server restart, and the CLI warns when the target is not covered by a
+volume mount because the change may be lost when the container is replaced.
+
+```bash
+ttlama global-config get --yaml
+ttlama global-config diff --file config.yml --check-all
+ttlama global-config validate --file config.yml
+ttlama global-config apply --file config.yml --dry-run
 ```
 
 ## Installation and usage
@@ -151,8 +176,8 @@ ttlama
  │          └── get --id <profile_id>
  │
  ├── global-config → **Configuration** → **_How does the instance work ?_**
- │    ├── get [--output <file_path> | none]
- │    ├── diff --file <file_path> [--colored-diff | none]
+ │    ├── get [--json | none] [--yaml | none]
+ │    ├── diff --file <file_path> [--check-all | none]
  │    ├── validate --file <file_path>
  │    └── apply --file <file_path> [--dry-run | none]
  │

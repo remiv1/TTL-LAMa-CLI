@@ -21,7 +21,7 @@ La CLI est en développement. Les commandes disponibles permettent de configurer
 | `config` | `set-server` | — |
 | `auth` | `login internal`, `logout`, `password-chg`, `status` | `login oidc` |
 | `user` | `get`, `profiles list`, `profiles get`, `devices list/get/add/delete`, `leases list/get/create/revoke` | — |
-| `global-config` | — | `get`, `diff`, `validate`, `apply` |
+| `global-config` | `get`, `diff`, `validate`, `apply` | — |
 | `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
 | `admin devices` | `list`, `get`, `update`, `block`, `delete` | — |
 | `admin leases` | `list`, `get`, `revoke` | — |
@@ -35,6 +35,32 @@ Les administrateurs peuvent lister les baux en combinant `--user`, `--device`, `
 ttlama admin leases list --status active --yaml
 ttlama admin leases get --lease 73 --json
 ttlama admin leases revoke --lease 73
+```
+
+### Configuration globale
+
+`ttlama global-config get` lit le document YAML de configuration de
+l’application côté serveur ; `--json` et `--yaml` renvoient sa structure brute.
+Les secrets directs sont remplacés par `[REDACTED]`. `diff --file` compare un
+candidat JSON ou YAML local au fichier courant ; `--check-all` affiche aussi les
+valeurs inchangées. `validate --file` demande au serveur de valider le candidat
+sans l’écrire. `apply --file` affiche les changements et demande confirmation ;
+`--dry-run` valide et affiche le diff sans appliquer les changements.
+
+Ce groupe écrit uniquement le fichier de configuration applicatif désigné par
+`TTL_LAMA_CONFIG_FILE` côté serveur. Il ne gère ni les définitions de profils,
+ni `access-profiles.yml`, ni les policies de profils en base. Remplacez les
+secrets masqués par leur valeur ou une référence à un fichier secret avant
+l’application. Les variables d’environnement restent prioritaires sur le YAML.
+L’application nécessite un redémarrage externe du serveur ; la CLI avertit si
+le fichier cible n’est pas couvert par un montage de volume, car le changement
+pourrait être perdu au remplacement du conteneur.
+
+```bash
+ttlama global-config get --yaml
+ttlama global-config diff --file config.yml --check-all
+ttlama global-config validate --file config.yml
+ttlama global-config apply --file config.yml --dry-run
 ```
 
 ## Installation et utilisation
@@ -166,8 +192,8 @@ ttlama
  │          └── get --id <profile_id>
  │
  ├── global-config → **Configuration** → **_Comment l'instance fonctionne ?_**
- │    ├── get [--output <file_path> | none]
- │    ├── diff --file <file_path> [--colored-diff | none]
+ │    ├── get [--json | none] [--yaml | none]
+ │    ├── diff --file <file_path> [--check-all | none]
  │    ├── validate --file <file_path>
  │    └── apply --file <file_path> [--dry-run | none]
  │

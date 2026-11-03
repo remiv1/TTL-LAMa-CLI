@@ -206,8 +206,18 @@ def test_update_device_parses_json_and_yaml_files(
 @pytest.mark.parametrize(
     ("command", "method", "endpoint", "success_message"),
     [
-        ("block", HTTPMethod.POST, f"admin/devices/{DEVICE_ID}/block", "active leases were revoked"),
-        ("delete", HTTPMethod.DELETE, f"admin/devices/{DEVICE_ID}", "history retained"),
+        (
+            "block",
+            HTTPMethod.POST,
+            f"admin/devices/{DEVICE_ID}/block",
+            "active leases were revoked"
+        ),
+        (
+            "delete",
+            HTTPMethod.DELETE,
+            f"admin/devices/{DEVICE_ID}",
+            "history retained"
+        ),
     ],
 )
 def test_block_and_delete_confirm_before_mutating(
