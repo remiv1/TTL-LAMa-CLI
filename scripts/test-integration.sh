@@ -114,14 +114,14 @@ validate_environment() {
 
 launch_tests() {
   # Launch only the test container with the requested pytest selection.
-  local -a pytest_args=("-v" "--color=yes" "-ra" "-p" "no:cacheprovider")
+  local -a pytest_args=("-v" "--color=yes" "-ra" "-p" "no:cacheprovider" "--cov=ttlama_cli" "--cov-report=term-missing")
   local -a compose_args=(run --rm --no-deps)
   pytest_args+=("${TEST_SELECTORS[@]}")
   printf "\n"
   printf "${GREEN}%s${RESET}\n" "Building CLI tests image..."
   podman compose -f "$COMPOSE_FILE" build cli-tests >> "$LOG_FILE" 2>&1
   podman compose -f "$COMPOSE_FILE" "${compose_args[@]}" cli-tests \
-    python -m pytest "${pytest_args[@]}"
+    env COVERAGE_FILE=/tmp/ttlama-cli-coverage python -m pytest "${pytest_args[@]}"
   code=$?
   if (( code != 0 )); then
     echo "Erreur lors du lancement des tests. Voir $LOG_FILE pour les détails."

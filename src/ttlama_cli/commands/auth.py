@@ -15,13 +15,25 @@
 from __future__ import annotations
 
 import json
-from typing import cast
+import hmac
+import secrets
+import time
+from typing import Any, cast
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from urllib.parse import parse_qs, urlencode, urlsplit
+import webbrowser
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
-from ..api_client import authenticate_internal, request_api
+from ..api_client import (
+    authenticate_internal,
+    begin_oidc_device_authorization,
+    exchange_oidc_cli_ticket,
+    poll_oidc_device_authorization,
+    request_api,
+)
 from ..config_store import load_server_config
 from ..token_store import (
     delete_access_token,
@@ -38,6 +50,8 @@ from ..objects import HTTPMethod, ServerParameters, SpecificRequest
 from ..utils import json_to_yaml
 
 INVALID_RESPONSE = "The API status response is invalid."
+OIDC_CALLBACK_TIMEOUT = 300
+DEVICE_POLL_INCREMENT = 5
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -50,6 +64,161 @@ login_app = typer.Typer(
 )
 
 app.add_typer(login_app, name="login")
+
+
+class _OidcCallbackServer(HTTPServer):
+    """Receive one state-verified OIDC ticket on the loopback interface."""
+
+    def __init__(self, state: str) -> None:
+        self.expected_state = state
+        self.callback_ticket: str | None = None
+        self.callback_error: str | None = None
+        self.callback_received = False
+        super().__init__(("127.0.0.1", 0), _OidcCallbackHandler)
+
+
+class _OidcCallbackHandler(BaseHTTPRequestHandler):
+    """Handle the local OIDC redirect without logging its query string."""
+
+    def do_GET(self) -> None:   # pylint: disable=C0103
+        """Validate the loopback path and state, then retain only the ticket."""
+        server = cast(_OidcCallbackServer, self.server)
+        parsed = urlsplit(self.path)
+        parameters = parse_qs(parsed.query)
+        state_values = parameters.get("state", [])
+        ticket_values = parameters.get("ticket", [])
+        if parsed.path != "/callback":
+            self.send_error(404)
+            return
+        if (
+            len(state_values) != 1
+            or not hmac.compare_digest(state_values[0], server.expected_state)
+        ):
+            server.callback_error = "OIDC callback state did not match."
+            server.callback_received = True
+            self._respond(400, "Login response rejected.")
+            return
+        if parameters.get("error") or len(ticket_values) != 1 or not ticket_values[0]:
+            server.callback_error = "OIDC authentication was not completed."
+            server.callback_received = True
+            self._respond(400, "Login was not completed. Return to the CLI.")
+            return
+
+        server.callback_ticket = ticket_values[0]
+        server.callback_received = True
+        self._respond(200, "Authentication complete. You may close this window.")
+
+    def log_message(self, *args: Any) -> None:  # type: ignore[override]
+        """Do not log callback URLs, which contain the temporary ticket."""
+
+    def _respond(self, http_status: int, message: str) -> None:
+        body = message.encode("utf-8")
+        self.send_response(http_status)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Referrer-Policy", "no-referrer")
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def _browser_oidc_login(server: ServerParameters) -> str:
+    """Complete OIDC login through a local callback and one-time ticket."""
+    state = secrets.token_urlsafe(32)
+    with _OidcCallbackServer(state) as callback_server:
+        callback_server.timeout = 0.25
+        callback_url = f"http://127.0.0.1:{callback_server.server_port}/callback"
+        login_url = (
+            f"{server.server_url}:{server.server_port}/auth/login?"
+            + urlencode({"cli_callback_url": callback_url, "cli_state": state})
+        )
+        try:
+            opened = webbrowser.open(login_url)
+        except webbrowser.Error:
+            opened = False
+        if not opened:
+            typer.echo(f"Open this URL to sign in: {login_url}")
+
+        deadline = time.monotonic() + OIDC_CALLBACK_TIMEOUT
+        while not callback_server.callback_received and time.monotonic() < deadline:
+            callback_server.handle_request()
+
+        callback_ticket = callback_server.callback_ticket
+        callback_error = callback_server.callback_error
+        callback_received = callback_server.callback_received
+    if not callback_received:
+        raise APIError("Timed out waiting for the OIDC browser callback.")
+    if callback_error is not None or callback_ticket is None:
+        raise AuthenticationError(callback_error or "OIDC authentication failed.")
+    return exchange_oidc_cli_ticket(server, callback_ticket)
+
+
+def _device_authorization_details(
+    response: dict[str, object],
+) -> tuple[str, str, str, int, int]:
+    """Validate and unpack the public fields of a device authorization response."""
+    device_code = response.get("device_code")
+    user_code = response.get("user_code")
+    verification_uri = response.get(
+        "verification_uri_complete",
+        response.get("verification_uri"),
+    )
+    expires_in = response.get("expires_in")
+    interval = response.get("interval", 5)
+    if (
+        not isinstance(device_code, str)
+        or not device_code
+        or not isinstance(user_code, str)
+        or not user_code
+        or not isinstance(verification_uri, str)
+        or not verification_uri
+        or not isinstance(expires_in, int)
+        or expires_in <= 0
+        or not isinstance(interval, int)
+        or interval <= 0
+    ):
+        raise APIError("OIDC device authorization response is invalid.")
+    return device_code, user_code, verification_uri, expires_in, interval
+
+
+def _poll_distant_oidc_login(
+    server: ServerParameters,
+    device_code: str,
+    expires_in: int,
+    interval: int,
+) -> str:
+    """Poll until authorization succeeds, is denied, or expires."""
+    deadline = time.monotonic() + expires_in
+    while time.monotonic() < deadline:
+        time.sleep(interval)
+        result = poll_oidc_device_authorization(server, device_code)
+        status_value = result.get("status")
+        if status_value == "complete":
+            token = result.get("access_token")
+            if isinstance(token, str) and token:
+                return token
+            raise APIError("OIDC API response does not contain a valid access token.")
+        if status_value == "pending":
+            continue
+        if status_value == "slow_down":
+            interval += DEVICE_POLL_INCREMENT
+            continue
+        if status_value == "denied":
+            raise AuthenticationError("OIDC device authorization was denied.")
+        if status_value == "expired":
+            raise AuthenticationError("OIDC device authorization expired.")
+        raise APIError("OIDC device authorization response is invalid.")
+    raise AuthenticationError("OIDC device authorization expired.")
+
+
+def _distant_oidc_login(server: ServerParameters) -> str:
+    """Complete OIDC login by polling the server-side device authorization relay."""
+    response = begin_oidc_device_authorization(server)
+    device_code, user_code, verification_uri, expires_in, interval = (
+        _device_authorization_details(response)
+    )
+    typer.echo(f"Open {verification_uri} and enter code {user_code}.")
+    return _poll_distant_oidc_login(server, device_code, expires_in, interval)
 
 
 def _status_payload(response: object) -> dict[str, object]:
@@ -142,6 +311,35 @@ def login_internal(
         raise typer.Exit(code=1) from None
 
     typer.echo("Login successful. Token saved in the system keyring.")
+
+
+@login_app.command("oidc")
+def login_oidc(
+    distant: bool = typer.Option(
+        False,
+        "--distant",
+        help="Use a device code for sign-in from another browser or device.",
+    ),
+) -> None:
+    """Sign in with the configured OIDC provider."""
+    try:
+        server_url, server_port = load_server_config()
+        server = ServerParameters(server_url=server_url, server_port=server_port)
+        token = _distant_oidc_login(server) if distant else _browser_oidc_login(server)
+        save_access_token(server_url, server_port, token)
+    except (
+        APIError,
+        AuthenticationError,
+        AuthorizationError,
+        TokenStorageError,
+    ) as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(code=1) from None
+    except KeyboardInterrupt:
+        typer.echo("OIDC login cancelled.", err=True)
+        raise typer.Exit(code=1) from None
+
+    typer.echo("OIDC login successful. Token saved in the system keyring.")
 
 
 @app.command("logout")

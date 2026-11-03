@@ -5,6 +5,7 @@ English | [Français](docs/README.fr.md)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Typer](https://img.shields.io/badge/CLI-Typer-009688)](https://typer.tiangolo.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](../LICENSE)
+![Coverage](https://img.shields.io/badge/Coverage-77%25-yellow)
 
 [![Logo](./docs/img/logo_300ppp.png)](./docs/img/logo_300ppp.png)
 
@@ -19,20 +20,20 @@ The CLI is under development. Currently available commands let you configure the
 | Group | Available commands | Planned commands |
 | --- | --- | --- |
 | `config` | `set-server` | — |
-| `auth` | `login internal`, `logout`, `password-chg`, `status` | `login oidc` |
-| `user` | `get`, `profiles list`, `profiles get`, `devices list/get/add/delete`, `leases list/get/create/revoke` | — |
+| `auth` | `login internal`, `login oidc`, `logout`, `password-chg`, `status` | — |
+| `user` | `get`, `profiles ls`, `profiles get`, `devices ls/get/add/delete`, `leases ls/get/create/revoke` | — |
 | `global-config` | `get`, `diff`, `validate`, `apply` | — |
-| `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
-| `admin devices` | `list`, `get`, `update`, `block`, `delete` | — |
-| `admin leases` | `list`, `get`, `revoke` | — |
-| `admin profiles` | `list`, `get`, `create`, `update`, `delete` | — |
+| `admin users` | `ls`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
+| `admin devices` | `ls`, `get`, `update`, `block`, `delete` | — |
+| `admin leases` | `ls`, `get`, `revoke` | — |
+| `admin profiles` | `ls`, `get`, `create`, `update`, `delete` | — |
 
 Remaining planned commands will cover the resources and operations exposed by the [v1 API](../src/api/v1/README.md) (see the github.com/remiv1/TTL-LAMa repository). Their filtering options and file formats will be defined as they are implemented.
 
 Administrators can list leases using any combination of `--user`, `--device`, `--profile`, and `--status` (`active`, `expired`, or `revoked`). `get` displays the complete lease, including its derived status and lifecycle timestamps. `revoke` asks for confirmation before revoking the lease; its history is retained.
 
 ```bash
-ttlama admin leases list --status active --yaml
+ttlama admin leases ls --status active --yaml
 ttlama admin leases get --lease 73 --json
 ttlama admin leases revoke --lease 73
 ```
@@ -89,6 +90,15 @@ ttlama auth login internal --user admin
 ```
 
 The command performs the CSRF exchange required by the API, then stores the access token returned by the server. It does not display the password or token.
+
+Sign in with the configured OIDC provider. By default, the CLI opens a browser and listens for a short-lived callback on `127.0.0.1`; `--distant` instead displays a verification URL and user code for approval in another browser. The OIDC client secret stays on the server, and the CLI stores the Bearer token only after successful approval without displaying it.
+
+```bash
+ttlama auth login oidc
+ttlama auth login oidc --distant
+```
+
+The distant flow requires the provider's discovery document to publish `device_authorization_endpoint` and support the `urn:ietf:params:oauth:grant-type:device_code` grant for the configured client.
 
 Change the password of the signed-in account. The current password and the new password are prompted for securely, with a second prompt to confirm the new password. After success, all of the account's sessions are revoked, including the CLI token; sign in again to store a new token.
 
@@ -151,7 +161,7 @@ ttlama
  ├── auth → **Authentication** → **_Who am I ?_**
  │    ├── login
  │    │     ├── internal --user <username>
- │    │     └── oidc --user <username>
+ │    │     └── oidc [--distant | none]
  │    │
  │    ├── logout
  │    ├── password-chg
@@ -161,19 +171,19 @@ ttlama
  │    ├── get
  │    │
  │    ├── devices
- │    │     ├── list
+ │    │     ├── ls
  │    │     ├── get --id <device_id>
  │    │     ├── add --file <file_path>
  │    │     └── delete --id <device_id>
  │    │
  │    ├── leases
- │    │     ├── list
+ │    │     ├── ls
  │    │     ├── get --id <lease_id>
  │    │     ├── create --file <file_path>
  │    │     └── revoke --id <lease_id>
  │    │
  │    └── profiles
- │          ├── list
+ │          ├── ls
  │          └── get --id <profile_id>
  │
  ├── global-config → **Configuration** → **_How does the instance work ?_**
@@ -185,7 +195,7 @@ ttlama
  └── admin → **Administration** → **_Who has what rights / What is the administered state ?_**
       │
       ├── users
-      │     ├── list [--device <device_id> | none ] [--lease <lease_id> | none ] [--profile <profile_id> | none]
+      │     ├── ls [--device <id> | none ] [--lease <id> | none ] [--profile <id> | none]
       │     ├── get --user <user_id>
       │     ├── create --file <file_path>
       │     ├── update --user <user_id> --file <file_path>
@@ -194,19 +204,19 @@ ttlama
       │     └── unassign --user <user_id> --profile <profile_id>
       │
       ├── devices
-      │     ├── list [--lease <lease_id> | none ] [--profile <profile_id> | none]
+      │     ├── ls [--lease <id> | none ] [--profile <id> | none]
       │     ├── get --device <device_id>
       │     ├── update --device <device_id> --file <file_path>
       │     ├── block --device <device_id>
       │     └── delete --device <device_id>
       │
       ├── leases
-      │     ├── list [--user <user_id> | none ] [--device <device_id> | none ] [--profile <profile_id> | none ] [--status <status> | none]
+      │     ├── ls [--user <id> | none ] [--device <id> | none ] [--profile <id> | none ] [--status <status> | none]
       │     ├── get --lease <lease_id>
       │     └── revoke --lease <lease_id>
       │
       └── profiles
-            ├── list [--user <user_id> &/| --device <device_id> &/| --lease <lease_id> | none]
+            ├── ls [--user <id> &/| --device <id> &/| --lease <id> | none]
             ├── get --profile <profile_id> [--json | --yaml | none]
             ├── create --file <file_path>
             ├── update --profile <profile_id> --file <file_path>
@@ -229,7 +239,7 @@ profile to a user; repeating the command is idempotent. The matching
 
 ### Admin device files
 
-`ttlama admin devices update --device <device_id> --file` accepts a UTF-8 JSON or YAML object with one or both of `name` and `public_key`. Device ownership and lifecycle fields cannot be changed. The JSON or YAML output of `ttlama admin devices get --device <device_id> --json` or `--yaml` contains only those editable fields and can be passed directly to `update --file`. The default console view shows the complete device record; the list table omits public keys, while structured list output contains the full API records. The `list` filters `--lease` and `--profile` can be combined.
+`ttlama admin devices update --device <device_id> --file` accepts a UTF-8 JSON or YAML object with one or both of `name` and `public_key`. Device ownership and lifecycle fields cannot be changed. The JSON or YAML output of `ttlama admin devices get --device <device_id> --json` or `--yaml` contains only those editable fields and can be passed directly to `update --file`. The default console view shows the complete device record; the list table omits public keys, while structured list output contains the full API records. The `ls` filters `--lease` and `--profile` can be combined.
 
 Both `block` and `delete` ask for confirmation and revoke the device's active leases. `block` marks the device as blocked; `delete` is a logical deletion that retains the device history.
 
@@ -245,4 +255,4 @@ networks:
       - 10.0.0.0/24
 ```
 
-`update --profile <profile_id> --file` accepts any subset of those fields. `get --profile <profile_id> --json` and `--yaml` output a flat object that can be passed to `update --file`; `list` filters `--user`, `--device`, and `--lease` are combined with AND. Historical profiles without a policy return only their name, so add the complete policy fields before updating one. Deleting a profile requires typing its full name, then revokes it and its dependent assignments and leases.
+`update --profile <profile_id> --file` accepts any subset of those fields. `get --profile <profile_id> --json` and `--yaml` output a flat object that can be passed to `update --file`; `ls` filters `--user`, `--device`, and `--lease` are combined with AND. Historical profiles without a policy return only their name, so add the complete policy fields before updating one. Deleting a profile requires typing its full name, then revokes it and its dependent assignments and leases.

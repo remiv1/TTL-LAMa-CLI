@@ -1,8 +1,12 @@
 """Tests des commandes d’authentification."""
 
 from collections.abc import Callable
+from threading import Thread
 from unittest.mock import Mock
 import json
+from urllib.error import HTTPError, URLError
+from urllib.parse import parse_qs, urlencode, urlsplit
+from urllib.request import urlopen
 
 import pytest
 import yaml
@@ -11,7 +15,11 @@ from typer.testing import CliRunner
 from ttlama_cli.cli import app
 from ttlama_cli.commands import auth as auth_commands
 from ttlama_cli.exc import APIError, AuthenticationError, TokenStorageError
-from ttlama_cli.objects import HTTPMethod, SpecificRequest
+from ttlama_cli.objects import HTTPMethod, ServerParameters, SpecificRequest
+
+
+def _ignore_sleep(_interval: float) -> None:
+    return None
 
 
 def _get_access_token_returning(token: str | None) -> Callable[[str, int], str | None]:
@@ -147,6 +155,246 @@ def test_internal_login_shows_token_storage_error_without_traceback(
     assert "Trousseau indisponible." in result.output
     assert "Traceback" not in result.output
     assert token not in result.output
+
+
+def test_oidc_browser_login_validates_state_and_saves_only_after_exchange(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The browser flow exchanges a state-bound ticket without exposing its token."""
+    access_token = "oidc-secret-access-token"
+    ticket = "one-time-login-ticket"
+    saved_token = Mock()
+    exchanged_ticket: list[str] = []
+    callback_thread: list[Thread] = []
+    callback_errors: list[Exception] = []
+
+    def exchange_ticket(_server: ServerParameters, value: str) -> str:
+        """Exchange the OIDC CLI ticket for an access token."""
+        exchanged_ticket.append(value)
+        return access_token
+
+    def open_browser(login_url: str) -> bool:
+        """Simulate opening the browser for OIDC login."""
+        query = parse_qs(urlsplit(login_url).query)
+        callback_url = query["cli_callback_url"][0]
+        state = query["cli_state"][0]
+
+        def send_callback() -> None:
+            """Send the forged callback to the loopback URL."""
+            target = f"{callback_url}?{urlencode({'ticket': ticket, 'state': state})}"
+            try:
+                with urlopen(target, timeout=3):
+                    pass
+            except URLError as error:
+                callback_errors.append(error)
+
+        thread = Thread(target=send_callback)
+        callback_thread.append(thread)
+        thread.start()
+        return True
+
+    monkeypatch.setattr(
+        auth_commands,
+        "load_server_config",
+        lambda: ("https://server.example", 8443),
+    )
+    monkeypatch.setattr(auth_commands.webbrowser, "open", open_browser)
+    monkeypatch.setattr(
+        auth_commands,
+        "exchange_oidc_cli_ticket",
+        exchange_ticket,
+    )
+    monkeypatch.setattr(auth_commands, "save_access_token", saved_token)
+
+    result = CliRunner().invoke(app, ["auth", "login", "oidc"])
+    callback_thread[0].join(timeout=3)
+
+    assert result.exit_code == 0
+    assert exchanged_ticket == [ticket]
+    assert not callback_errors
+    assert access_token not in result.output
+    assert ticket not in result.output
+    saved_token.assert_called_once_with("https://server.example", 8443, access_token)
+
+
+def test_oidc_browser_login_rejects_mismatched_state_without_saving_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A forged loopback callback state never reaches ticket exchange."""
+    exchange_ticket = Mock()
+    save_token = Mock()
+    callback_thread: list[Thread] = []
+
+    def open_browser(login_url: str) -> bool:
+        query = parse_qs(urlsplit(login_url).query)
+        callback_url = query["cli_callback_url"][0]
+        state = query["cli_state"][0]
+
+        def send_callback() -> None:
+            target = f"{callback_url}?ticket=attacker-ticket&state={state}x"
+            try:
+                with urlopen(target, timeout=3):
+                    pass
+            except HTTPError:
+                pass
+
+        thread = Thread(target=send_callback)
+        callback_thread.append(thread)
+        thread.start()
+        return True
+
+    monkeypatch.setattr(
+        auth_commands,
+        "load_server_config",
+        lambda: ("https://server.example", 8443),
+    )
+    monkeypatch.setattr(auth_commands.webbrowser, "open", open_browser)
+    monkeypatch.setattr(auth_commands, "exchange_oidc_cli_ticket", exchange_ticket)
+    monkeypatch.setattr(auth_commands, "save_access_token", save_token)
+    monkeypatch.setattr(auth_commands, "OIDC_CALLBACK_TIMEOUT", 2)
+
+    result = CliRunner().invoke(app, ["auth", "login", "oidc"])
+    callback_thread[0].join(timeout=3)
+
+    assert result.exit_code == 1
+    assert "state did not match" in result.output
+    assert "attacker-ticket" not in result.output
+    exchange_ticket.assert_not_called()
+    save_token.assert_not_called()
+
+
+def test_oidc_distant_login_polls_and_hides_device_code(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The distant flow honors slow_down and stores the token only on success."""
+
+    def record_sleep(interval: float) -> None:
+        """Record the sleep interval instead of actually sleeping."""
+        intervals.append(interval)
+
+    device_code = "private-device-code"
+    access_token = "private-access-token"
+    save_token = Mock()
+    poll = Mock(
+        side_effect=[
+            {"status": "pending"},
+            {"status": "slow_down"},
+            {"status": "complete", "access_token": access_token},
+        ]
+    )
+    intervals: list[float] = []
+
+    monkeypatch.setattr(
+        auth_commands,
+        "load_server_config",
+        lambda: ("https://server.example", 8443),
+    )
+    monkeypatch.setattr(
+        auth_commands,
+        "begin_oidc_device_authorization",
+        Mock(return_value={
+            "device_code": device_code,
+            "user_code": "ABCD-EFGH",
+            "verification_uri": "https://idp.example/device",
+            "expires_in": 60,
+            "interval": 2,
+        }),
+    )
+    monkeypatch.setattr(auth_commands, "poll_oidc_device_authorization", poll)
+    monkeypatch.setattr(auth_commands.time, "sleep", record_sleep)
+    monkeypatch.setattr(auth_commands.time, "monotonic", lambda: 10)
+    browser_open = Mock()
+    monkeypatch.setattr(auth_commands.webbrowser, "open", browser_open)
+    monkeypatch.setattr(auth_commands, "save_access_token", save_token)
+
+    result = CliRunner().invoke(app, ["auth", "login", "oidc", "--distant"])
+
+    assert result.exit_code == 0
+    assert "https://idp.example/device" in result.output
+    assert "ABCD-EFGH" in result.output
+    assert device_code not in result.output
+    assert access_token not in result.output
+    assert intervals == [2, 2, 7]
+    assert [call.args[1] for call in poll.call_args_list] == [device_code] * 3
+    browser_open.assert_not_called()
+    save_token.assert_called_once_with("https://server.example", 8443, access_token)
+
+
+@pytest.mark.parametrize("status", ["denied", "expired"])
+def test_oidc_distant_failure_does_not_save_token(
+    monkeypatch: pytest.MonkeyPatch,
+    status: str,
+) -> None:
+    """Denied and expired device authorizations leave the keyring untouched."""
+    save_token = Mock()
+    monkeypatch.setattr(
+        auth_commands,
+        "load_server_config",
+        lambda: ("https://server.example", 8443),
+    )
+    monkeypatch.setattr(
+        auth_commands,
+        "begin_oidc_device_authorization",
+        Mock(return_value={
+            "device_code": "private-device-code",
+            "user_code": "ABCD-EFGH",
+            "verification_uri": "https://idp.example/device",
+            "expires_in": 60,
+            "interval": 1,
+        }),
+    )
+    monkeypatch.setattr(
+        auth_commands,
+        "poll_oidc_device_authorization",
+        Mock(return_value={"status": status}),
+    )
+    monkeypatch.setattr(auth_commands.time, "sleep", _ignore_sleep)
+    monkeypatch.setattr(auth_commands.time, "monotonic", lambda: 10)
+    monkeypatch.setattr(auth_commands, "save_access_token", save_token)
+
+    result = CliRunner().invoke(app, ["auth", "login", "oidc", "--distant"])
+
+    assert result.exit_code == 1
+    assert "private-device-code" not in result.output
+    save_token.assert_not_called()
+
+
+def test_oidc_distant_cancellation_does_not_save_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ctrl-C cancels device authorization without persisting a token."""
+    save_token = Mock()
+    monkeypatch.setattr(
+        auth_commands,
+        "load_server_config",
+        lambda: ("https://server.example", 8443),
+    )
+    monkeypatch.setattr(
+        auth_commands,
+        "begin_oidc_device_authorization",
+        Mock(return_value={
+            "device_code": "private-device-code",
+            "user_code": "ABCD-EFGH",
+            "verification_uri": "https://idp.example/device",
+            "expires_in": 60,
+            "interval": 1,
+        }),
+    )
+    monkeypatch.setattr(
+        auth_commands,
+        "poll_oidc_device_authorization",
+        Mock(side_effect=KeyboardInterrupt),
+    )
+    monkeypatch.setattr(auth_commands.time, "sleep", _ignore_sleep)
+    monkeypatch.setattr(auth_commands.time, "monotonic", lambda: 10)
+    monkeypatch.setattr(auth_commands, "save_access_token", save_token)
+
+    result = CliRunner().invoke(app, ["auth", "login", "oidc", "--distant"])
+
+    assert result.exit_code == 1
+    assert "cancelled" in result.output
+    assert "private-device-code" not in result.output
+    save_token.assert_not_called()
 
 
 def test_password_change_sends_patch_without_displaying_secrets(

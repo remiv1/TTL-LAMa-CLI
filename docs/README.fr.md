@@ -5,6 +5,7 @@
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](../../LICENSE)
 [![Typer](https://img.shields.io/badge/CLI-Typer-009688)](https://typer.tiangolo.com/)
+![Coverage](https://img.shields.io/badge/Coverage-77%25-yellow)
 
 [![Logo](./img/logo_300ppp.png)](./img/logo_300ppp.png)
 
@@ -19,20 +20,20 @@ La CLI est en développement. Les commandes disponibles permettent de configurer
 | Groupe | Commandes disponibles | Commandes prévues |
 | --- | --- | --- |
 | `config` | `set-server` | — |
-| `auth` | `login internal`, `logout`, `password-chg`, `status` | `login oidc` |
-| `user` | `get`, `profiles list`, `profiles get`, `devices list/get/add/delete`, `leases list/get/create/revoke` | — |
+| `auth` | `login internal`, `login oidc`, `logout`, `password-chg`, `status` | — |
+| `user` | `get`, `profiles ls`, `profiles get`, `devices ls/get/add/delete`, `leases ls/get/create/revoke` | — |
 | `global-config` | `get`, `diff`, `validate`, `apply` | — |
-| `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
-| `admin devices` | `list`, `get`, `update`, `block`, `delete` | — |
-| `admin leases` | `list`, `get`, `revoke` | — |
-| `admin profiles` | `list`, `get`, `create`, `update`, `delete` | — |
+| `admin users` | `ls`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
+| `admin devices` | `ls`, `get`, `update`, `block`, `delete` | — |
+| `admin leases` | `ls`, `get`, `revoke` | — |
+| `admin profiles` | `ls`, `get`, `create`, `update`, `delete` | — |
 
 Les autres commandes prévues reprendront les ressources et opérations exposées par l’[API v1](../../src/api/v1/README.md) (voir le dépôt github.com/remiv1/TTL-LAMa). Leurs options de filtrage et leurs formats de fichiers seront définis au fur et à mesure de leur implémentation.
 
 Les administrateurs peuvent lister les baux en combinant `--user`, `--device`, `--profile` et `--status` (`active`, `expired` ou `revoked`). `get` affiche tous les champs du bail, dont son état calculé et ses dates. `revoke` demande une confirmation avant la révocation; l’historique est conservé.
 
 ```bash
-ttlama admin leases list --status active --yaml
+ttlama admin leases ls --status active --yaml
 ttlama admin leases get --lease 73 --json
 ttlama admin leases revoke --lease 73
 ```
@@ -90,6 +91,15 @@ ttlama auth login internal --user admin
 ```
 
 La commande effectue l’échange CSRF requis par l’API, puis enregistre le jeton d’accès retourné par le serveur. Elle n’affiche ni le mot de passe ni le jeton.
+
+Connectez-vous avec le fournisseur OIDC configuré. Par défaut, la CLI ouvre un navigateur et attend un callback temporaire sur `127.0.0.1` ; `--distant` affiche une URL de vérification et un code utilisateur à approuver dans un autre navigateur. Le secret client OIDC reste sur le serveur et le Bearer n’est enregistré dans le trousseau qu’après la réussite, sans être affiché.
+
+```bash
+ttlama auth login oidc
+ttlama auth login oidc --distant
+```
+
+Le mode distant nécessite que le document de découverte du fournisseur publie `device_authorization_endpoint` et que le client configuré autorise le grant `urn:ietf:params:oauth:grant-type:device_code`.
 
 Changez le mot de passe du compte connecté. Le mot de passe actuel et le nouveau sont demandés de façon masquée, puis le nouveau est demandé une seconde fois pour confirmation. Après le succès, toutes les sessions du compte sont révoquées, y compris le jeton CLI ; reconnectez-vous pour enregistrer un nouveau jeton.
 
@@ -167,7 +177,7 @@ ttlama
  ├── auth → **Authentification** → **_Qui suis-je ?_**
  │    ├── login
  │    │     ├── internal --user <username>
- │    │     └── oidc --user <username>
+ │    │     └── oidc [--distant]
  │    │
  │    ├── logout
  │    ├── password-chg
@@ -177,19 +187,19 @@ ttlama
  │    ├── get
  │    │
  │    ├── devices
- │    │     ├── list
+ │    │     ├── ls
  │    │     ├── get --id <device_id>
  │    │     ├── add --file <file_path>
  │    │     └── delete --id <device_id>
  │    │
  │    ├── leases
- │    │     ├── list
+ │    │     ├── ls
  │    │     ├── get --id <lease_id>
  │    │     ├── create --file <file_path>
  │    │     └── revoke --id <lease_id>
  │    │
  │    └── profiles
- │          ├── list
+ │          ├── ls
  │          └── get --id <profile_id>
  │
  ├── global-config → **Configuration** → **_Comment l'instance fonctionne ?_**
@@ -201,7 +211,7 @@ ttlama
  └── admin → **Administration** → **_Qui a doit à quoi / Quel est l'état administré ?_**
       │
       ├── users
-      │     ├── list [--device <device_id> &/| --lease <lease_id> &/| --profile <profile_id> | none]
+      │     ├── ls [--device <id> &/| --lease <id> &/| --profile <id> | none]
       │     ├── get --user <user_id>
       │     ├── create --file <file_path>
       │     ├── update --user <user_id> --file <file_path>
@@ -210,25 +220,19 @@ ttlama
       │     └── unassign --user <user_id> --profile <profile_id>
       │
       ├── devices
-      │     ├── list [--lease <lease_id> | --profile <profile_id> | none]
+      │     ├── ls [--lease <lease_id> | --profile <profile_id> | none]
       │     ├── get --device <device_id>
       │     ├── update --device <device_id> --file <file_path>
       │     ├── block --device <device_id>
       │     └── delete --device <device_id>
       │
       ├── leases
-      │     ├── list [
-      │     │         --user <user_id>
-      │     │     &/| --device <device_id>
-      │     │     &/| --profile <profile_id>
-      │     │     &/| --status <status>
-      │     │     | none
-      │     │     ]
+      │     ├── ls [--user <id> | none] [--device <id> | none ] [--profile <id> | none ] [--status <status> | none ]
       │     ├── get --lease <lease_id>
       │     └── revoke --lease <lease_id>
       │
       └── profiles
-            ├── list [--user <user_id> &/| --device <device_id> &/| --lease <lease_id> | none]
+            ├── ls [--user <id> | none] [--device <id> | none] [--lease <id> | none]
             ├── get --profile <profile_id> [--json | --yaml | none]
             ├── create --file <file_path>
             ├── update --profile <profile_id> --file <file_path>
@@ -243,7 +247,7 @@ Des exemples JSON et YAML prêts à l’emploi pour chaque commande `--file` son
 
 `ttlama admin users create --file` et `update --user <user_id> --file` acceptent des objets JSON ou YAML encodés en UTF-8. La création exige `username` ; `email`, `enabled`, `is_admin` et `password` sont facultatifs. Pour une mise à jour, le fichier contient uniquement les champs à modifier ; utilisez `email: null` pour effacer l’adresse e-mail. Le mot de passe présent dans le fichier est envoyé à l’API, mais n’est jamais affiché par la CLI. Si aucun mot de passe n’est fourni et que le serveur utilise l’authentification interne, l’API en génère un et la CLI ne l’affiche que dans la réponse de création ; conservez-le immédiatement, car il ne sera plus récupérable. Sans authentification interne, aucun identifiant interne n’est créé si le mot de passe est absent.
 
-La sortie JSON ou YAML de `ttlama admin users get <user_id> --json` ou `--yaml` est un objet plat ne contenant que les champs modifiables renvoyés par l’API ; elle peut être passée directement à `update --user <user_id> --file`. La sortie de `list` reste une collection et ne constitue pas un corps de mise à jour. Les mots de passe ne sont jamais renvoyés ; ajoutez manuellement un champ `password` pour en modifier un.
+La sortie JSON ou YAML de `ttlama admin users get <user_id> --json` ou `--yaml` est un objet plat ne contenant que les champs modifiables renvoyés par l’API ; elle peut être passée directement à `update --user <user_id> --file`. La sortie de `ls` reste une collection et ne constitue pas un corps de mise à jour. Les mots de passe ne sont jamais renvoyés ; ajoutez manuellement un champ `password` pour en modifier un.
 
 `ttlama admin users assign --user <user_id> --profile <profile_id>` rattache
 un profil à un utilisateur ; répéter la commande est sans effet supplémentaire.
@@ -252,7 +256,7 @@ les baux qui lui sont associés.
 
 ### Fichiers des commandes admin devices
 
-`ttlama admin devices update --device <device_id> --file` accepte un objet JSON ou YAML UTF-8 contenant un ou deux des champs `name` et `public_key`. La propriété et le cycle de vie de l’appareil ne sont pas modifiables. Les sorties JSON et YAML de `ttlama admin devices get --device <device_id> --json` ou `--yaml` ne contiennent que ces champs modifiables et peuvent être réutilisées avec `update --file`. L’affichage console par défaut présente la fiche complète ; le tableau de `list` omet les clés publiques, contrairement à ses sorties structurées qui reprennent les objets complets de l’API. Les filtres `--lease` et `--profile` de `list` sont combinables.
+`ttlama admin devices update --device <device_id> --file` accepte un objet JSON ou YAML UTF-8 contenant un ou deux des champs `name` et `public_key`. La propriété et le cycle de vie de l’appareil ne sont pas modifiables. Les sorties JSON et YAML de `ttlama admin devices get --device <device_id> --json` ou `--yaml` ne contiennent que ces champs modifiables et peuvent être réutilisées avec `update --file`. L’affichage console par défaut présente la fiche complète ; le tableau de `ls` omet les clés publiques, contrairement à ses sorties structurées qui reprennent les objets complets de l’API. Les filtres `--lease` et `--profile` de `ls` sont combinables.
 
 Les commandes `block` et `delete` demandent toutes deux une confirmation et révoquent les baux actifs de l’appareil. `block` bloque l’appareil ; `delete` correspond à une suppression logique qui conserve son historique.
 
@@ -268,4 +272,4 @@ networks:
       - 10.0.0.0/24
 ```
 
-`update --profile <profile_id> --file` accepte n’importe quel sous-ensemble de ces champs. Les sorties `get --profile <profile_id> --json` et `--yaml` sont un objet plat réutilisable avec `update --file`. Les filtres `--user`, `--device` et `--lease` de `list` se combinent avec AND. Pour un profil historique sans politique, `get` ne renvoie que le nom ; complétez les champs de politique avant de le modifier. La suppression demande de saisir le nom complet du profil, puis révoque celui-ci ainsi que ses rattachements et baux dépendants.
+`update --profile <profile_id> --file` accepte n’importe quel sous-ensemble de ces champs. Les sorties `get --profile <profile_id> --json` et `--yaml` sont un objet plat réutilisable avec `update --file`. Les filtres `--user`, `--device` et `--lease` de `ls` se combinent avec AND. Pour un profil historique sans politique, `get` ne renvoie que le nom ; complétez les champs de politique avant de le modifier. La suppression demande de saisir le nom complet du profil, puis révoque celui-ci ainsi que ses rattachements et baux dépendants.

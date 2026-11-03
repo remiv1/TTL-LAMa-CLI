@@ -11,13 +11,93 @@ This module provides functions to interact with the TTL-LAMa server API.
 """
 from __future__ import annotations
 
-from typing import cast
+from typing import TypeAlias, cast
 
 from requests import Session, request
 from requests.exceptions import RequestException
 
 from .exc import APIError, AuthenticationError, AuthorizationError
 from .objects import ServerParameters, SpecificRequest
+
+JSONValue: TypeAlias = (
+    None
+    | bool
+    | int
+    | float
+    | str
+    | list["JSONValue"]
+    | dict[str, "JSONValue"]
+)
+
+
+def _oidc_public_post(
+    server: ServerParameters,
+    endpoint: str,
+    payload: dict[str, JSONValue],
+) -> dict[str, object]:
+    """Send an unauthenticated OIDC CLI request and validate its JSON response."""
+    url = f"{server.server_url}:{server.server_port}/api/v1/{endpoint}"
+    try:
+        response = request("POST", url, json=payload, timeout=15)
+    except RequestException as error:
+        raise APIError("Unable to reach the TTL-LAMa API.") from error
+
+    if response.status_code == 401:
+        raise AuthenticationError("The OIDC login ticket or device code is invalid.")
+    if response.status_code == 403:
+        raise AuthorizationError("The OIDC login request was rejected.")
+    try:
+        response.raise_for_status()
+    except RequestException as error:
+        raise APIError(
+            f"TTL-LAMa API responded with HTTP status {response.status_code}."
+        ) from error
+
+    try:
+        response_data = response.json()
+    except ValueError as error:
+        raise APIError("OIDC API response is invalid.") from error
+    if not isinstance(response_data, dict):
+        raise APIError("OIDC API response is invalid.")
+    return cast(dict[str, object], response_data)
+
+
+def _access_token_from_response(response: dict[str, object]) -> str:
+    """Extract a non-empty Bearer token from an OIDC API response."""
+    token = response.get("access_token")
+    if not isinstance(token, str) or not token:
+        raise APIError("OIDC API response does not contain a valid access token.")
+    return token
+
+
+def exchange_oidc_cli_ticket(server: ServerParameters, ticket: str) -> str:
+    """Exchange a loopback login ticket for a TTL-LAMa Bearer token."""
+    response = _oidc_public_post(
+        server,
+        "auth/oidc/exchange",
+        {"ticket": ticket},
+    )
+    return _access_token_from_response(response)
+
+
+def begin_oidc_device_authorization(server: ServerParameters) -> dict[str, object]:
+    """Start OIDC Device Authorization on the TTL-LAMa server."""
+    return _oidc_public_post(server, "auth/oidc/device", {})
+
+
+def poll_oidc_device_authorization(
+    server: ServerParameters,
+    device_code: str,
+) -> dict[str, object]:
+    """Poll OIDC Device Authorization through the TTL-LAMa server."""
+    response = _oidc_public_post(
+        server,
+        "auth/oidc/device/poll",
+        {"device_code": device_code},
+    )
+    if response.get("status") == "complete":
+        response["access_token"] = _access_token_from_response(response)
+    return response
 
 
 def authenticate_internal(server_url: str, server_port: int, username: str, password: str) -> str:
