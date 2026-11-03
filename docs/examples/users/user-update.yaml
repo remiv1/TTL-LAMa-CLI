@@ -3,3 +3,9 @@
 email: john.doe@example.com
 enabled: false
 is_admin: true
+link_oidc:
+  - issuer: https://id.example.com
+    subject: replace-with-provider-subject
+unlink_oidc:
+  - issuer: https://old-id.example.com
+    subject: old-provider-subject

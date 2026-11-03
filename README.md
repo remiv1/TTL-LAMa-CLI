@@ -231,6 +231,8 @@ Ready-to-use JSON and YAML examples for every `--file` command are available in 
 
 `ttlama admin users create --file` and `update --user <user_id> --file` accept UTF-8 JSON or YAML objects. Create files require `username`; `email`, `enabled`, `is_admin`, and `password` are optional. Update files contain only the fields to change; use `email: null` to clear the email address. A password in the input file is sent to the API but is never displayed by the CLI. If no password is supplied and the server uses internal authentication, the API generates one and the CLI displays it in the creation response only; save it immediately because it cannot be retrieved later. Without internal authentication, no internal credential is created when the password is omitted.
 
+Create files may also include `oidc_links`, a list of identities identified by `issuer` and `subject`. Update files use `link_oidc` to add identities and `unlink_oidc` to remove them. Both values must exactly match the issuer and `sub` supplied by the OIDC provider; identities are not matched by email. An identity already linked to another account causes a conflict. Repeating a link or unlink operation has no additional effect. The CLI warns when unlinking because removing the last identity prevents future OIDC sign-in for that account.
+
 The JSON or YAML output of `ttlama admin users get <user_id> --json` or `--yaml` is a flat object containing the editable fields returned by the API and can be passed directly to `update --user <user_id> --file`. List output remains a collection and is not an update body. Passwords are never returned; add a `password` field manually when changing one.
 
 `ttlama admin users assign --user <user_id> --profile <profile_id>` assigns a

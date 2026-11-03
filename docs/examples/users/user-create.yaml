@@ -7,3 +7,6 @@ email: jdoe@example.com
 enabled: true
 is_admin: false
 password: "ChangeMe-2026!"
+oidc_links:
+  - issuer: https://id.example.com
+    subject: replace-with-provider-subject

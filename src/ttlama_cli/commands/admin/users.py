@@ -252,6 +252,11 @@ def update_user(
     :type file_path: Path
     """
     user_data = _load_user_file(file_path)
+    if user_data.get("unlink_oidc"):
+        typer.echo(
+            "Warning: unlinking the last OIDC identity prevents this user from signing in via OIDC",
+            err=True,
+        )
     url, port, token = _get_server_and_token()
 
     request = SpecificRequest(

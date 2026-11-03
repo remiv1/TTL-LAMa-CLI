@@ -55,6 +55,35 @@ def test_create_user_sends_yaml_file_to_api(
     assert request.json_body == {"username": "alice", "is_admin": True}
 
 
+def test_create_user_sends_oidc_links_to_api(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Create forwards initial OIDC identities to the API."""
+    file_path = tmp_path / "user.yaml"
+    file_path.write_text(
+        "username: alice\noidc_links:\n  - issuer: http://dex.example.test/dex\n"
+        "    subject: alice-subject\n",
+        encoding="utf-8",
+    )
+    request_api = Mock(return_value={})
+    _mock_user_command_dependencies(monkeypatch, request_api)
+
+    result = CliRunner().invoke(
+        app,
+        ["admin", "users", "create", "--file", str(file_path)],
+    )
+
+    assert result.exit_code == 0
+    assert _get_request(request_api).json_body == {
+        "username": "alice",
+        "oidc_links": [{
+            "issuer": "http://dex.example.test/dex",
+            "subject": "alice-subject",
+        }],
+    }
+
+
 def test_create_user_displays_generated_password_once(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -108,6 +137,40 @@ def test_update_user_sends_json_file_to_api(
     assert request.method is HTTPMethod.PATCH
     assert request.endpoint == "admin/users/user-123"
     assert request.json_body == {"email": None, "enabled": False}
+
+
+def test_update_user_sends_oidc_changes_and_warns_on_unlink(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Update forwards OIDC link changes and warns about removing identities."""
+    file_path = tmp_path / "user.yaml"
+    file_path.write_text(
+        "link_oidc:\n  - issuer: http://dex.example.test/dex\n"
+        "    subject: alice-subject\nunlink_oidc:\n"
+        "  - issuer: http://old-dex.example.test/dex\n    subject: old-subject\n",
+        encoding="utf-8",
+    )
+    request_api = Mock(return_value={})
+    _mock_user_command_dependencies(monkeypatch, request_api)
+
+    result = CliRunner().invoke(
+        app,
+        ["admin", "users", "update", "--user", USER_ID, "--file", str(file_path)],
+    )
+
+    assert result.exit_code == 0
+    assert "last OIDC identity" in result.stderr
+    assert _get_request(request_api).json_body == {
+        "link_oidc": [{
+            "issuer": "http://dex.example.test/dex",
+            "subject": "alice-subject",
+        }],
+        "unlink_oidc": [{
+            "issuer": "http://old-dex.example.test/dex",
+            "subject": "old-subject",
+        }],
+    }
 
 
 def test_delete_user_sends_delete_request(
