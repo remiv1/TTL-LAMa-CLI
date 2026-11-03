@@ -42,8 +42,9 @@ ttlama admin leases revoke --lease 73
 `ttlama global-config get` lit le document YAML de configuration de
 l’application côté serveur ; `--json` et `--yaml` renvoient sa structure brute.
 Les secrets directs sont remplacés par `[REDACTED]`. `diff --file` compare un
-candidat JSON ou YAML local au fichier courant ; `--check-all` affiche aussi les
-valeurs inchangées. `validate --file` demande au serveur de valider le candidat
+candidat JSON ou YAML local au fichier courant, compare les secrets masqués côté
+serveur et n’affiche jamais leurs valeurs directes ; `--check-all` affiche aussi
+les valeurs inchangées. `validate --file` demande au serveur de valider le candidat
 sans l’écrire. `apply --file` affiche les changements et demande confirmation ;
 `--dry-run` valide et affiche le diff sans appliquer les changements.
 

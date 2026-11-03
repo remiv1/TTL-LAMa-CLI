@@ -35,6 +35,13 @@ from ..utils import json_to_yaml
 from . import get_server_and_token
 
 VALIDATION_RESPONSE_ERROR = "The API validation response is invalid."
+REDACTED = "[REDACTED]"
+SECRET_PATHS = {
+    "app.secret_key",
+    "auth.admin.password",
+    "auth.oidc.client_secret",
+    "database.password",
+}
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -113,6 +120,20 @@ def _validation_errors(candidate: dict[str, JSONValue]) -> list[str]:
         return ["The API rejected the configuration without details."]
     return cast(list[str], errors)
 
+
+def _unchanged_secret_paths(candidate: dict[str, JSONValue]) -> set[str]:
+    """Ask the server which direct candidate secrets are unchanged."""
+    response = _request_global_config(HTTPMethod.POST, "/compare", candidate)
+    if not isinstance(response, dict):
+        _api_error("The API secret comparison response is invalid.")
+    unchanged = cast(dict[str, object], response).get("unchanged_secrets")
+    if not isinstance(unchanged, list) or any(
+        not isinstance(path, str) or path not in SECRET_PATHS
+        for path in cast(list[object], unchanged)
+    ):
+        _api_error("The API secret comparison response is invalid.")
+    return set(cast(list[str], unchanged))
+
 def _flatten(value: object, prefix: str = "") -> dict[str, object]:
     """Flatten nested mappings into dotted paths while retaining list values."""
     if not isinstance(value, dict) or not value:
@@ -130,13 +151,32 @@ def _render_value(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
+def _is_unchanged(
+    path: str,
+    old_value: object,
+    new_value: object,
+    unchanged_secrets: set[str],
+) -> bool:
+    """Determine equality using server-side comparison for redacted secrets."""
+    return old_value == new_value or (
+        path in SECRET_PATHS and path in unchanged_secrets
+    )
+
+
+def _display_value(path: str, value: object) -> object:
+    """Hide direct secret values in diff output."""
+    return REDACTED if path in SECRET_PATHS else value
+
+
 def _display_diff(
     current: dict[str, JSONValue],
     candidate: dict[str, JSONValue],
     *,
     check_all: bool,
+    unchanged_secrets: set[str] | None = None,
 ) -> int:
     """Display added, removed, changed, and optionally unchanged values."""
+    unchanged_secrets = unchanged_secrets or set()
     current_values = _flatten(current)
     candidate_values = _flatten(candidate)
     table = Table(title="Global configuration changes", expand=True)
@@ -150,15 +190,36 @@ def _display_diff(
         in_candidate = path in candidate_values
         old_value = current_values.get(path)
         new_value = candidate_values.get(path)
-        if in_current and in_candidate and old_value == new_value:
+        is_unchanged = in_current and in_candidate and _is_unchanged(
+            path,
+            old_value,
+            new_value,
+            unchanged_secrets,
+        )
+        if is_unchanged:
             if check_all:
-                table.add_row("Unchanged", path, _render_value(old_value), style="dim")
+                table.add_row(
+                    "Unchanged",
+                    path,
+                    _render_value(_display_value(path, old_value)),
+                    style="dim",
+                )
             continue
         if in_current:
-            table.add_row("Removed", path, _render_value(old_value), style="red")
+            table.add_row(
+                "Removed",
+                path,
+                _render_value(_display_value(path, old_value)),
+                style="red",
+            )
             changes += 1
         if in_candidate:
-            table.add_row("Added", path, _render_value(new_value), style="green")
+            table.add_row(
+                "Added",
+                path,
+                _render_value(_display_value(path, new_value)),
+                style="green",
+            )
             changes += 1
 
     if changes or check_all:
@@ -235,7 +296,13 @@ def diff_global_config(
     candidate = _load_candidate(file_path)
     current = _configuration_response(_request_global_config(HTTPMethod.GET, ""))
     _report_validation(_validation_errors(candidate))
-    changes = _display_diff(current, candidate, check_all=check_all)
+    unchanged_secrets = _unchanged_secret_paths(candidate)
+    changes = _display_diff(
+        current,
+        candidate,
+        check_all=check_all,
+        unchanged_secrets=unchanged_secrets,
+    )
     if not changes:
         typer.echo("Configuration is already up to date.")
 
@@ -258,7 +325,13 @@ def apply_global_config(
     candidate = _load_candidate(file_path)
     current = _configuration_response(_request_global_config(HTTPMethod.GET, ""))
     _report_validation(_validation_errors(candidate))
-    changes = _display_diff(current, candidate, check_all=False)
+    unchanged_secrets = _unchanged_secret_paths(candidate)
+    changes = _display_diff(
+        current,
+        candidate,
+        check_all=False,
+        unchanged_secrets=unchanged_secrets,
+    )
     if not changes:
         typer.echo("Configuration is already up to date.")
         return

@@ -101,6 +101,7 @@ def test_global_config_diff_shows_added_and_removed_values(
                 "valid": True,
                 "errors": [],
             },
+            {"unchanged_secrets": []},
         ],
     )
     monkeypatch.setattr(
@@ -139,6 +140,7 @@ def test_global_config_apply_dry_run_never_posts_apply(
                 "valid": True,
                 "errors": [],
             },
+            {"unchanged_secrets": []},
         ],
     )
     monkeypatch.setattr(
@@ -155,7 +157,7 @@ def test_global_config_apply_dry_run_never_posts_apply(
 
     assert result.exit_code == 0
     assert "no changes were applied" in result.output
-    assert request_api.call_count == 2
+    assert request_api.call_count == 3
     assert all(
         call.kwargs["specific_request"].endpoint != "global-config/apply"
         for call in request_api.call_args_list
@@ -198,6 +200,7 @@ def test_global_config_apply_confirms_and_reports_restart_warning(
         side_effect=[
             {"app": {"environment": "production"}},
             {"valid": True, "errors": []},
+            {"unchanged_secrets": []},
             {"applied": True, "restart_required": True, "warning": "not mounted"},
         ],
     )
