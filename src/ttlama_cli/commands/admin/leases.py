@@ -79,7 +79,7 @@ def _create_filters(
 
 
 @leases_app.command(
-    "list",
+    "ls",
     help="List leases, optionally filtered by user, device, profile, or status.",
 )
 def list_leases(    # pylint: disable=R0913, R0917

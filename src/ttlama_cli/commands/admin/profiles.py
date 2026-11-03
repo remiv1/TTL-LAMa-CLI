@@ -124,7 +124,7 @@ def _profile_update_data(response: object) -> dict[str, JSONValue]:
     return update_data
 
 
-@profiles_app.command("list")
+@profiles_app.command("ls")
 def list_profiles(
     user: str | None = typer.Option(None, "--user", help="Filter by assigned user UUID."),
     device: int | None = typer.Option(None, "--device", help="Filter by device ID."),

@@ -90,7 +90,7 @@ def _device_update_data(response: object) -> dict[str, object]:
     return {"name": name, "public_key": public_key}
 
 
-@devices_app.command("list")
+@devices_app.command("ls")
 def list_devices(
     lease: int | None = typer.Option(None, "--lease", help="Filter by lease ID."),
     profile: int | None = typer.Option(None, "--profile", help="Filter by profile ID."),

@@ -106,7 +106,7 @@ def _display_device(
     Console().print(table)
 
 
-@app.command("list")
+@app.command("ls")
 def list_devices(
     json_output: bool = typer.Option(False, "--json", help="Output devices as JSON."),
     yaml_output: bool = typer.Option(False, "--yaml", help="Output devices as YAML."),

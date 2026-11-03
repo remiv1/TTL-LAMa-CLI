@@ -49,7 +49,7 @@ def test_admin_leases_group_is_registered() -> None:
     result = runner.invoke(app, ["admin", "leases", "--help"])
 
     assert result.exit_code == 0
-    for command in ("list", "get", "revoke"):
+    for command in ("ls", "get", "revoke"):
         assert command in result.output
 
         command_help = runner.invoke(
@@ -60,7 +60,7 @@ def test_admin_leases_group_is_registered() -> None:
         assert ":param " not in command_help.output
     assert "active|expired|revoked" in runner.invoke(
         app,
-        ["admin", "leases", "list", "--help"],
+        ["admin", "leases", "ls", "--help"],
     ).output
 
 
@@ -74,7 +74,7 @@ def test_list_leases_sends_all_filters_and_yaml_output(
     result = CliRunner().invoke(
         app,
         [
-            "admin", "leases", "list", "--user", "user-123", "--device", "42",
+            "admin", "leases", "ls", "--user", "user-123", "--device", "42",
             "--profile", "9", "--status", "active", "--yaml",
         ],
     )
@@ -99,7 +99,7 @@ def test_list_leases_table_shows_status_and_omits_internal_assignment_id(
     request_api = Mock(return_value=[LEASE_RESPONSE])
     _mock_lease_command_dependencies(monkeypatch, request_api)
 
-    result = CliRunner().invoke(app, ["admin", "leases", "list"])
+    result = CliRunner().invoke(app, ["admin", "leases", "ls"])
 
     assert result.exit_code == 0
     for value in (str(LEASE_ID), "user-123", "42", "9", "active"):
@@ -114,7 +114,7 @@ def test_list_leases_reports_empty_response(
     request_api = Mock(return_value=[])
     _mock_lease_command_dependencies(monkeypatch, request_api)
 
-    result = CliRunner().invoke(app, ["admin", "leases", "list"])
+    result = CliRunner().invoke(app, ["admin", "leases", "ls"])
 
     assert result.exit_code == 1
     assert "No leases found." in result.output
@@ -127,7 +127,7 @@ def test_list_leases_rejects_invalid_api_shape(
     request_api = Mock(return_value={"leases": [LEASE_RESPONSE]})
     _mock_lease_command_dependencies(monkeypatch, request_api)
 
-    result = CliRunner().invoke(app, ["admin", "leases", "list"])
+    result = CliRunner().invoke(app, ["admin", "leases", "ls"])
 
     assert result.exit_code == 1
     assert "isn't a lease list" in result.output

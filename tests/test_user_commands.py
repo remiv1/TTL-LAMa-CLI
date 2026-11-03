@@ -91,7 +91,7 @@ def test_user_profiles_list_displays_assigned_profiles_as_yaml(
     request_api = Mock(return_value=OVERVIEW)
     _mock_user_dependencies(monkeypatch, request_api)
 
-    result = CliRunner().invoke(app, ["user", "profiles", "list", "--yaml"])
+    result = CliRunner().invoke(app, ["user", "profiles", "ls", "--yaml"])
 
     assert result.exit_code == 0
     assert yaml.safe_load(result.output) == {"profiles": [PROFILE]}
@@ -124,7 +124,7 @@ def test_user_profiles_list_accepts_no_assignments(
     request_api = Mock(return_value=overview)
     _mock_user_dependencies(monkeypatch, request_api)
 
-    result = CliRunner().invoke(app, ["user", "profiles", "list"])
+    result = CliRunner().invoke(app, ["user", "profiles", "ls"])
 
     assert result.exit_code == 0
     assert "No profiles assigned." in result.output

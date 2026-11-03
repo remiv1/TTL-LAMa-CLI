@@ -62,7 +62,7 @@ def test_list_profiles_sends_combined_filters_and_yaml_output(
         [
             "admin",
             "profiles",
-            "list",
+            "ls",
             "--user",
             "user-123",
             "--device",

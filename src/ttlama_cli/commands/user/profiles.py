@@ -37,7 +37,7 @@ def _get_profiles() -> list[dict[str, object]]:
     return profile_rows(overview["profiles"])
 
 
-@app.command("list")
+@app.command("ls")
 def list_profiles(
     json_output: bool = typer.Option(False, "--json", help="Output profiles as JSON."),
     yaml_output: bool = typer.Option(False, "--yaml", help="Output profiles as YAML."),

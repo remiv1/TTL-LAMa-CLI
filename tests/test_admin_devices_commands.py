@@ -50,7 +50,7 @@ def test_admin_devices_group_is_registered() -> None:
     result = CliRunner().invoke(app, ["admin", "devices", "--help"])
 
     assert result.exit_code == 0
-    for command in ("list", "get", "update", "block", "delete"):
+    for command in ("ls", "get", "update", "block", "delete"):
         assert command in result.output
 
 
@@ -64,7 +64,7 @@ def test_list_devices_sends_combined_filters_and_yaml_output(
     result = CliRunner().invoke(
         app,
         [
-            "admin", "devices", "list", "--lease", "9", "--profile", "17", "--yaml",
+            "admin", "devices", "ls", "--lease", "9", "--profile", "17", "--yaml",
         ],
     )
 
@@ -84,7 +84,7 @@ def test_list_devices_table_omits_public_key_and_shows_block_status(
     request_api = Mock(return_value=[DEVICE_RESPONSE, blocked_device])
     _mock_device_command_dependencies(monkeypatch, request_api)
 
-    result = CliRunner().invoke(app, ["admin", "devices", "list"])
+    result = CliRunner().invoke(app, ["admin", "devices", "ls"])
 
     assert result.exit_code == 0
     assert "work-laptop" in result.output
@@ -100,7 +100,7 @@ def test_list_devices_reports_empty_response(
     request_api = Mock(return_value=[])
     _mock_device_command_dependencies(monkeypatch, request_api)
 
-    result = CliRunner().invoke(app, ["admin", "devices", "list"])
+    result = CliRunner().invoke(app, ["admin", "devices", "ls"])
 
     assert result.exit_code == 1
     assert "No devices found." in result.output
@@ -295,7 +295,7 @@ def test_list_devices_rejects_invalid_api_shape(
     request_api = Mock(return_value={"devices": [DEVICE_RESPONSE]})
     _mock_device_command_dependencies(monkeypatch, request_api)
 
-    result = CliRunner().invoke(app, ["admin", "devices", "list"])
+    result = CliRunner().invoke(app, ["admin", "devices", "ls"])
 
     assert result.exit_code == 1
     assert "isn't a device list" in result.output
@@ -309,7 +309,7 @@ def test_list_devices_reports_api_errors_without_traceback(
     request_api = Mock(side_effect=APIError("Device listing failed."))
     _mock_device_command_dependencies(monkeypatch, request_api)
 
-    result = CliRunner().invoke(app, ["admin", "devices", "list"])
+    result = CliRunner().invoke(app, ["admin", "devices", "ls"])
 
     assert result.exit_code == 1
     assert "Device listing failed." in result.output
@@ -326,7 +326,7 @@ def test_list_devices_rejects_multiple_structured_formats(
 
     result = CliRunner().invoke(
         app,
-        ["admin", "devices", "list", "--json", "--yaml"],
+        ["admin", "devices", "ls", "--json", "--yaml"],
     )
 
     assert result.exit_code == 1

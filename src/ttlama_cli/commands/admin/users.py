@@ -100,7 +100,7 @@ def _create_filters(
     }
     return filters or None
 
-@users_app.command("list")
+@users_app.command("ls")
 def list_users(
     device: int | None = typer.Option(
         None,

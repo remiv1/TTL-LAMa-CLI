@@ -111,7 +111,7 @@ def _display_lease(
     Console().print(table)
 
 
-@app.command("list")
+@app.command("ls")
 def list_leases(
     json_output: bool = typer.Option(False, "--json", help="Output leases as JSON."),
     yaml_output: bool = typer.Option(False, "--yaml", help="Output leases as YAML."),

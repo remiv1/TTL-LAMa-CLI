@@ -57,7 +57,7 @@ def test_device_list_and_get_support_json_and_yaml(
     _mock_user_api(monkeypatch, request_api)
     runner = CliRunner()
 
-    list_result = runner.invoke(app, ["user", "devices", "list", "--json"])
+    list_result = runner.invoke(app, ["user", "devices", "ls", "--json"])
     get_result = runner.invoke(
         app,
         ["user", "devices", "get", "--id", "4", "--yaml"],
@@ -98,8 +98,8 @@ def test_get_commands_report_api_errors_without_traceback(
 @pytest.mark.parametrize(
     "command",
     [
-        ["user", "devices", "list", "--json", "--yaml"],
-        ["user", "leases", "list", "--json", "--yaml"],
+        ["user", "devices", "ls", "--json", "--yaml"],
+        ["user", "leases", "ls", "--json", "--yaml"],
     ],
 )
 def test_list_rejects_multiple_output_formats(
@@ -138,7 +138,7 @@ def test_empty_lists_preserve_selected_output_format(
 
     result = CliRunner().invoke(
         app,
-        ["user", resource, "list", output_option],
+        ["user", resource, "ls", output_option],
     )
 
     assert result.exit_code == 0
@@ -201,7 +201,7 @@ def test_lease_list_and_get_support_json_and_yaml(
     _mock_user_api(monkeypatch, request_api)
     runner = CliRunner()
 
-    list_result = runner.invoke(app, ["user", "leases", "list", "--yaml"])
+    list_result = runner.invoke(app, ["user", "leases", "ls", "--yaml"])
     get_result = runner.invoke(
         app,
         ["user", "leases", "get", "--id", "9", "--json"],
