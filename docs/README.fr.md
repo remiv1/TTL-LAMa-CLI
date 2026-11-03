@@ -14,7 +14,7 @@ Le paquet est autonome dans le dépôt `cli/` et peut évoluer indépendamment d
 
 ## État du projet
 
-La CLI est en développement. Les commandes disponibles permettent de configurer l’adresse du serveur, de s’authentifier avec un compte interne, de consulter et fermer la session courante, de changer le mot de passe de l’utilisateur connecté, de consulter son aperçu, ses profils, ses appareils et ses leases, et de gérer les utilisateurs et les profils. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
+La CLI est en développement. Les commandes disponibles permettent de configurer l’adresse du serveur, de s’authentifier avec un compte interne, de consulter et fermer la session courante, de changer le mot de passe de l’utilisateur connecté, de consulter son aperçu, ses profils, ses appareils et ses leases, et de gérer les utilisateurs, les appareils, les leases et les profils. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
 
 | Groupe | Commandes disponibles | Commandes prévues |
 | --- | --- | --- |
@@ -24,10 +24,18 @@ La CLI est en développement. Les commandes disponibles permettent de configurer
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
 | `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
 | `admin devices` | `list`, `get`, `update`, `block`, `delete` | — |
-| `admin leases` | — | `list`, `get`, `revoke` |
+| `admin leases` | `list`, `get`, `revoke` | — |
 | `admin profiles` | `list`, `get`, `create`, `update`, `delete` | — |
 
 Les autres commandes prévues reprendront les ressources et opérations exposées par l’[API v1](../../src/api/v1/README.md) (voir le dépôt github.com/remiv1/TTL-LAMa). Leurs options de filtrage et leurs formats de fichiers seront définis au fur et à mesure de leur implémentation.
+
+Les administrateurs peuvent lister les baux en combinant `--user`, `--device`, `--profile` et `--status` (`active`, `expired` ou `revoked`). `get` affiche tous les champs du bail, dont son état calculé et ses dates. `revoke` demande une confirmation avant la révocation; l’historique est conservé.
+
+```bash
+ttlama admin leases list --status active --yaml
+ttlama admin leases get --lease 73 --json
+ttlama admin leases revoke --lease 73
+```
 
 ## Installation et utilisation
 

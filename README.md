@@ -14,7 +14,7 @@ The CLI lives in the `cli/` directory and can evolve independently of the server
 
 ## Project status
 
-The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, check and close the current session, change the signed-in user's password, inspect their overview, profiles, devices, and leases, and manage users and profiles. Commands marked as planned below are targets for future implementation, not commands that can be used today.
+The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, check and close the current session, change the signed-in user's password, inspect their overview, profiles, devices, and leases, and manage users, devices, leases, and profiles. Commands marked as planned below are targets for future implementation, not commands that can be used today.
 
 | Group | Available commands | Planned commands |
 | --- | --- | --- |
@@ -24,10 +24,18 @@ The CLI is under development. Currently available commands let you configure the
 | `global-config` | — | `get`, `diff`, `validate`, `apply` |
 | `admin users` | `list`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
 | `admin devices` | `list`, `get`, `update`, `block`, `delete` | — |
-| `admin leases` | — | `list`, `get`, `revoke` |
+| `admin leases` | `list`, `get`, `revoke` | — |
 | `admin profiles` | `list`, `get`, `create`, `update`, `delete` | — |
 
 Remaining planned commands will cover the resources and operations exposed by the [v1 API](../src/api/v1/README.md) (see the github.com/remiv1/TTL-LAMa repository). Their filtering options and file formats will be defined as they are implemented.
+
+Administrators can list leases using any combination of `--user`, `--device`, `--profile`, and `--status` (`active`, `expired`, or `revoked`). `get` displays the complete lease, including its derived status and lifecycle timestamps. `revoke` asks for confirmation before revoking the lease; its history is retained.
+
+```bash
+ttlama admin leases list --status active --yaml
+ttlama admin leases get --lease 73 --json
+ttlama admin leases revoke --lease 73
+```
 
 ## Installation and usage
 

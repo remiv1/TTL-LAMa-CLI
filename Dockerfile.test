@@ -6,10 +6,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /opt/ttlama-cli
 
+RUN useradd -m test-user
+
 COPY pyproject.toml ./
 COPY src/ ./src/
 COPY tests/ ./tests/
 
 RUN python -m pip install --no-cache-dir '.[test]'
+
+USER test-user
 
 CMD ["python", "-m", "pytest", "-q", "tests/integration"]
