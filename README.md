@@ -225,12 +225,11 @@ ttlama
  └── backend → **Backend** → **_Server-side operations and configurations_**
       │
       ├── wg
-      │     └── peers
+      │     └── leases
       │           ├── ls [--device <id> | none ]
-      │           ├── get --peer <peer_id>
-      │           ├── create --file <file_path>
-      │           ├── update --peer <peer_id> --file <file_path>
-      │           └── delete --peer <peer_id>
+      │           ├── get --lease <lease_id>
+      │           ├── apply --file <file_path>
+      │           └── delete --lease <lease_id>
       │
       ├── openvpn
       │     └── ...
