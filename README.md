@@ -1,13 +1,13 @@
 # TTL-LAMa CLI
 
-English | [Français](docs/README.fr.md)
+English | [Français](https://github.com/remiv1/TTL-LAMa-CLI/blob/main/docs/README.fr.md)
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Typer](https://img.shields.io/badge/CLI-Typer-009688)](https://typer.tiangolo.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/remiv1/TTL-LAMa-CLI/blob/main/LICENSE)
 ![Coverage](https://img.shields.io/badge/Coverage-77%25-yellow)
 
-[![Logo](./docs/img/logo_300ppp.png)](./docs/img/logo_300ppp.png)
+[![Logo](https://github.com/remiv1/TTL-LAMa/blob/main/docs/img/logo_300ppp.png)](https://github.com/remiv1/TTL-LAMa/blob/main/docs/img/logo_300ppp.png)
 
 `ttlama` is the command-line interface for TTL-LAMa (Time-to-Live Lease Administration Manager). It lets users and administrators interact with a TTL-LAMa instance through its HTTP API, without relying on the web interface.
 
@@ -28,7 +28,7 @@ The CLI is under development. Currently available commands let you configure the
 | `admin leases` | `ls`, `get`, `revoke` | — |
 | `admin profiles` | `ls`, `get`, `create`, `update`, `delete` | — |
 
-Remaining planned commands will cover the resources and operations exposed by the [v1 API](../src/api/v1/README.md) (see the github.com/remiv1/TTL-LAMa repository). Their filtering options and file formats will be defined as they are implemented.
+Remaining planned commands will cover the resources and operations exposed by the [v1 API](https://github.com/remiv1/TTL-LAMa/blob/main/src/api/v1/README.md) (see the github.com/remiv1/TTL-LAMa repository). Their filtering options and file formats will be defined as they are implemented.
 
 Administrators can list leases using any combination of `--user`, `--device`, `--profile`, and `--status` (`active`, `expired`, or `revoked`). `get` displays the complete lease, including its derived status and lifecycle timestamps. `revoke` asks for confirmation before revoking the lease; its history is retained.
 
@@ -192,40 +192,57 @@ ttlama
  │    ├── validate --file <file_path>
  │    └── apply --file <file_path> [--dry-run | none]
  │
- └── admin → **Administration** → **_Who has what rights / What is the administered state ?_**
+ ├── admin → **Administration** → **_Who has what rights / What is the administered state ?_**
+ │    │
+ │    ├── users
+ │    │     ├── ls [--device <id> | none ] [--lease <id> | none ] [--profile <id> | none]
+ │    │     ├── get --user <user_id>
+ │    │     ├── create --file <file_path>
+ │    │     ├── update --user <user_id> --file <file_path>
+ │    │     ├── delete --user <user_id>
+ │    │     ├── assign --user <user_id> --profile <profile_id>
+ │    │     └── unassign --user <user_id> --profile <profile_id>
+ │    │
+ │    ├── devices
+ │    │     ├── ls [--lease <id> | none ] [--profile <id> | none]
+ │    │     ├── get --device <device_id>
+ │    │     ├── update --device <device_id> --file <file_path>
+ │    │     ├── block --device <device_id>
+ │    │     └── delete --device <device_id>
+ │    │
+ │    ├── leases
+ │    │     ├── ls [--user <id> | none ] [--device <id> | none ] [--profile <id> | none ] [--status <status> | none]
+ │    │     ├── get --lease <lease_id>
+ │    │     └── revoke --lease <lease_id>
+ │    │
+ │    └── profiles
+ │          ├── ls [--user <id> &/| --device <id> &/| --lease <id> | none]
+ │          ├── get --profile <profile_id> [--json | --yaml | none]
+ │          ├── create --file <file_path>
+ │          ├── update --profile <profile_id> --file <file_path>
+ │          └── delete --profile <profile_id>
+ │
+ └── backend → **Backend** → **_Server-side operations and configurations_**
       │
-      ├── users
-      │     ├── ls [--device <id> | none ] [--lease <id> | none ] [--profile <id> | none]
-      │     ├── get --user <user_id>
-      │     ├── create --file <file_path>
-      │     ├── update --user <user_id> --file <file_path>
-      │     ├── delete --user <user_id>
-      │     ├── assign --user <user_id> --profile <profile_id>
-      │     └── unassign --user <user_id> --profile <profile_id>
+      ├── wg
+      │     └── peers
+      │           ├── ls [--device <id> | none ]
+      │           ├── get --peer <peer_id>
+      │           ├── create --file <file_path>
+      │           ├── update --peer <peer_id> --file <file_path>
+      │           └── delete --peer <peer_id>
       │
-      ├── devices
-      │     ├── ls [--lease <id> | none ] [--profile <id> | none]
-      │     ├── get --device <device_id>
-      │     ├── update --device <device_id> --file <file_path>
-      │     ├── block --device <device_id>
-      │     └── delete --device <device_id>
+      ├── openvpn
+      │     └── ...
       │
-      ├── leases
-      │     ├── ls [--user <id> | none ] [--device <id> | none ] [--profile <id> | none ] [--status <status> | none]
-      │     ├── get --lease <lease_id>
-      │     └── revoke --lease <lease_id>
-      │
-      └── profiles
-            ├── ls [--user <id> &/| --device <id> &/| --lease <id> | none]
-            ├── get --profile <profile_id> [--json | --yaml | none]
-            ├── create --file <file_path>
-            ├── update --profile <profile_id> --file <file_path>
-            └── delete --profile <profile_id>
+      └── ...
 ```
+
+Retrieve the complete CLI command documentation in [cli-reference.md](https://github.com/remiv1/TTL-LAMa-CLI/blob/main/docs/cli-reference.md).
 
 ### Input file examples
 
-Ready-to-use JSON and YAML examples for every `--file` command are available in [docs/examples/](docs/examples/): users (`users/user-create`, `users/user-update`), profiles (`profiles/profile-create`, `profiles/profile-update`), devices (`devices/device-add`, `devices/device-update`), and leases (`leases/lease-create`).
+Ready-to-use JSON and YAML examples for every `--file` command are available in [docs/examples/](https://github.com/remiv1/TTL-LAMa-CLI/blob/main/docs/examples/): users (`users/user-create`, `users/user-update`), profiles (`profiles/profile-create`, `profiles/profile-update`), devices (`devices/device-add`, `devices/device-update`), and leases (`leases/lease-create`).
 
 ### Admin user files
 

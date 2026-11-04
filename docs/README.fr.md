@@ -3,22 +3,23 @@
 [English](../README.md) | Français
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](../../LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](../LICENSE)
 [![Typer](https://img.shields.io/badge/CLI-Typer-009688)](https://typer.tiangolo.com/)
 ![Coverage](https://img.shields.io/badge/Coverage-77%25-yellow)
 
 [![Logo](./img/logo_300ppp.png)](./img/logo_300ppp.png)
 
-`ttlama` est l’interface en ligne de commande du projet TTL-LAMa (Time-to-Live Lease Administration Manager). Elle a vocation à permettre aux utilisateurs et aux administrateurs d’interagir avec une instance TTL-LAMa via son API HTTP, sans dépendre de son interface Web.
+`ttlama` est l’interface en ligne de commande du projet **TTL-LAMa** (Time-to-Live Lease Administration Manager). Elle a vocation à permettre aux utilisateurs et aux administrateurs d’interagir avec une instance TTL-LAMa via son API HTTP, sans dépendre de son interface Web.
 
 Le paquet est autonome dans le dépôt `cli/` et peut évoluer indépendamment du serveur. TTL-LAMa gère des accès réseau temporaires sous forme de baux (*leases*) ; la CLI n’est ni un client VPN ni un outil général d’administration réseau.
 
 ## État du projet
 
-La CLI est en développement. Les commandes disponibles permettent de configurer l’adresse du serveur, de s’authentifier avec un compte interne, de consulter et fermer la session courante, de changer le mot de passe de l’utilisateur connecté, de consulter son aperçu, ses profils, ses appareils et ses leases, et de gérer les utilisateurs, les appareils, les leases et les profils. Les commandes décrites comme « prévues » dans la suite sont la cible fonctionnelle, pas des commandes déjà utilisables.
+La CLI est en fin de développement. Il ne reste qu'à implémenter la fonction de conciliation des états `ttlama sync`.
 
 | Groupe | Commandes disponibles | Commandes prévues |
 | --- | --- | --- |
+| `sync` | — | `sync` |
 | `config` | `set-server` | — |
 | `auth` | `login internal`, `login oidc`, `logout`, `password-chg`, `status` | — |
 | `user` | `get`, `profiles ls`, `profiles get`, `devices ls/get/add/delete`, `leases ls/get/create/revoke` | — |
@@ -27,8 +28,6 @@ La CLI est en développement. Les commandes disponibles permettent de configurer
 | `admin devices` | `ls`, `get`, `update`, `block`, `delete` | — |
 | `admin leases` | `ls`, `get`, `revoke` | — |
 | `admin profiles` | `ls`, `get`, `create`, `update`, `delete` | — |
-
-Les autres commandes prévues reprendront les ressources et opérations exposées par l’[API v1](../../src/api/v1/README.md) (voir le dépôt github.com/remiv1/TTL-LAMa). Leurs options de filtrage et leurs formats de fichiers seront définis au fur et à mesure de leur implémentation.
 
 Les administrateurs peuvent lister les baux en combinant `--user`, `--device`, `--profile` et `--status` (`active`, `expired` ou `revoked`). `get` affiche tous les champs du bail, dont son état calculé et ses dates. `revoke` demande une confirmation avant la révocation; l’historique est conservé.
 
@@ -117,7 +116,7 @@ ttlama auth status --check-connected
 ttlama auth logout
 ```
 
-`status` n’affiche ni jeton d’accès ni hash. Sans jeton enregistré localement, la commande indique que la session est inactive et se termine avec succès ; `--check-connected` renvoie un code non nul dans ce cas. `logout` révoque uniquement la session CLI courante. Il supprime le jeton local après succès ou si le serveur le déclare invalide ; une erreur réseau ou serveur le conserve pour permettre une nouvelle tentative. Les sorties JSON et YAML de `status` contiennent `session` (`active` ou `inactive`), `user` (`null` sans jeton local ; sinon `id`, `username`, `email` et `is_admin`), ainsi que `sessions`, une liste de dates `expires_at`.
+**`status`** n’affiche ni jeton d’accès ni hash. Sans jeton enregistré localement, la commande indique que la session est inactive et se termine avec succès ; **`--check-connected`** renvoie un code non nul dans ce cas. **`logout`** révoque uniquement la session CLI courante. Il supprime le jeton local après succès ou si le serveur le déclare invalide ; une erreur réseau ou serveur le conserve pour permettre une nouvelle tentative. Les sorties JSON et YAML de **`status`** contiennent `session` (`active` ou `inactive`), `user` (`null` sans jeton local ; sinon `id`, `username`, `email` et `is_admin`), ainsi que `sessions`, une liste de dates `expires_at`.
 
 ## Configuration et identifiants
 
@@ -174,6 +173,8 @@ Voici l’arborescence cible des commandes disponibles avec `ttlama` :
 
 ```md
 ttlama
+ ├── sync → **Réconciliation** → **_Synchronisation des états_**
+ │
  ├── auth → **Authentification** → **_Qui suis-je ?_**
  │    ├── login
  │    │     ├── internal --user <username>
@@ -208,36 +209,53 @@ ttlama
  │    ├── validate --file <file_path>
  │    └── apply --file <file_path> [--dry-run | none]
  │
- └── admin → **Administration** → **_Qui a doit à quoi / Quel est l'état administré ?_**
+ ├── admin → **Administration** → **_Qui a doit à quoi / Quel est l'état administré ?_**
+ │    ├── users
+ │    │     ├── ls [--device <id> &/| --lease <id> &/| --profile <id> | none]
+ │    │     ├── get --user <user_id>
+ │    │     ├── create --file <file_path>
+ │    │     ├── update --user <user_id> --file <file_path>
+ │    │     ├── delete --user <user_id>
+ │    │     ├── assign --user <user_id> --profile <profile_id>
+ │    │     └── unassign --user <user_id> --profile <profile_id>
+ │    │
+ │    ├── devices
+ │    │     ├── ls [--lease <lease_id> | --profile <profile_id> | none]
+ │    │     ├── get --device <device_id>
+ │    │     ├── update --device <device_id> --file <file_path>
+ │    │     ├── block --device <device_id>
+ │    │     └── delete --device <device_id>
+ │    │
+ │    ├── leases
+ │    │     ├── ls [--user <id> | none] [--device <id> | none ] [--profile <id> | none ] [--status <status> | none ]
+ │    │     ├── get --lease <lease_id>
+ │    │     └── revoke --lease <lease_id>
+ │    │
+ │    └── profiles
+ │          ├── ls [--user <id> | none] [--device <id> | none] [--lease <id> | none]
+ │          ├── get --profile <profile_id> [--json | --yaml | none]
+ │          ├── create --file <file_path>
+ │          ├── update --profile <profile_id> --file <file_path>
+ │          └── delete --profile <profile_id>
+ │
+ └── backend → **Backend** → **_Opérations vers le serveur et configurations_**
       │
-      ├── users
-      │     ├── ls [--device <id> &/| --lease <id> &/| --profile <id> | none]
-      │     ├── get --user <user_id>
-      │     ├── create --file <file_path>
-      │     ├── update --user <user_id> --file <file_path>
-      │     ├── delete --user <user_id>
-      │     ├── assign --user <user_id> --profile <profile_id>
-      │     └── unassign --user <user_id> --profile <profile_id>
+      ├── wg
+      │     └── peers
+      │           ├── ls [--device <id> | none ]
+      │           ├── get --peer <peer_id>
+      │           ├── create --file <file_path>
+      │           ├── update --peer <peer_id> --file <file_path>
+      │           └── delete --peer <peer_id>
       │
-      ├── devices
-      │     ├── ls [--lease <lease_id> | --profile <profile_id> | none]
-      │     ├── get --device <device_id>
-      │     ├── update --device <device_id> --file <file_path>
-      │     ├── block --device <device_id>
-      │     └── delete --device <device_id>
+      ├── openvpn
+      │     └── ...
       │
-      ├── leases
-      │     ├── ls [--user <id> | none] [--device <id> | none ] [--profile <id> | none ] [--status <status> | none ]
-      │     ├── get --lease <lease_id>
-      │     └── revoke --lease <lease_id>
-      │
-      └── profiles
-            ├── ls [--user <id> | none] [--device <id> | none] [--lease <id> | none]
-            ├── get --profile <profile_id> [--json | --yaml | none]
-            ├── create --file <file_path>
-            ├── update --profile <profile_id> --file <file_path>
-            └── delete --profile <profile_id>
+      └── ...
+
 ```
+
+Retrouvez la documentation complète des commandes CLI dans [cli-reference.md](./cli-reference.md).
 
 ### Exemples de fichiers d’entrée
 
