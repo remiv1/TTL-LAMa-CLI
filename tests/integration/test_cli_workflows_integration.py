@@ -178,6 +178,7 @@ def _create_profile(
             "name": profile_name,
             "default_duration": "1h",
             "maximum_duration": "4h",
+            "lease_target": "wg0",
             "networks": ["10.0.0.0/24"],
         },
     )

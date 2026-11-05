@@ -3,7 +3,7 @@ services:
     image: ghcr.io/remiv1/ttl-lama:latest
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - "cp /run/ttl-lama/config-seed.yml /tmp/ttlama-config.yml && exec sh /opt/ttl-lama/src/entrypoint.sh"
+      - "cp /etc/ttl-lama/config.yml /tmp/ttlama-config.yml && exec sh /opt/ttl-lama/src/entrypoint.sh"
     environment:
       TTL_LAMA_CONFIG_FILE: /tmp/ttlama-config.yml
       TTL_LAMA_FLASK_ENV: development
@@ -11,8 +11,6 @@ services:
       TTL_LAMA_ADMIN_PASSWORD: cli-integration-password
       TTL_LAMA_SESSION_COOKIE_SECURE: "false"
       TTL_LAMA_ENFORCE_SECURE_CONNECTION: "false"
-    volumes:
-      - ../src/config/config.yml:/run/ttl-lama/config-seed.yml:ro,z
     ports:
       - "58080:8080"
     healthcheck:

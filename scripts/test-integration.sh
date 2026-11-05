@@ -81,6 +81,7 @@ result() {
   else
     printf "${RED}%s${RESET}\n" "$if_nok"
   fi
+  return "$code"
 }
 
 prepare_environment() {
@@ -105,10 +106,18 @@ prepare_environment() {
 
 validate_environment() {
   printf "\n"
-  while ! curl -s "http://127.0.0.1:58080/health" &> /dev/null; do
-    printf "${YELLOW}%s${RESET}\n" "Waiting for server to be ready..."
+  local attempt
+  for ((attempt = 0; attempt < 60; attempt++)); do
+    if curl --fail --silent --output /dev/null --max-time 2 \
+      "http://127.0.0.1:58080/health"; then
+      printf "${GREEN}%s${RESET}\n" "TTL-LAMa server is ready."
+      return 0
+    fi
     sleep 2
   done
+  printf "${RED}%s${RESET}\n" "TTL-LAMa server did not become ready within 120 seconds." >&2
+  "${COMPOSE[@]}" logs --no-color server >&2 || true
+  return 1
 }
 
 
@@ -151,7 +160,7 @@ result "prepare_environment" "Environment prepared successfully" "Failed to prep
 printf "\n"
 
 section "${GREEN}" "Validating environment"
-result "validate_environment" "Environment validated successfully" "Failed to validate environment"
+result "validate_environment" "Environment validated successfully" "Failed to validate environment" || exit $?
 printf "\n"
 
 section "${RED}" "Running CLI tests"
