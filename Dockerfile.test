@@ -4,16 +4,19 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     XDG_CONFIG_HOME=/tmp/ttlama-cli-config
 
-WORKDIR /opt/ttlama-cli
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
+        wireguard-tools \
+        iproute2 \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN useradd -m test-user
+WORKDIR /opt/ttlama-cli
 
 COPY pyproject.toml ./
 COPY src/ ./src/
 COPY tests/ ./tests/
 
 RUN python -m pip install --no-cache-dir '.[test]'
-
-USER test-user
 
 CMD ["python", "-m", "pytest", "-q", "tests/integration"]

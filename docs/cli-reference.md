@@ -63,7 +63,7 @@ $ ttlama auth status [OPTIONS]
 
 * `--json`: Output status as JSON.
 * `--yaml`: Output status as YAML.
-* `--check-connected`: Exit with status 1 when no active session is available.
+* `--check`: Exit with status 1 when no active session is available.
 * `--help`: Show this message and exit.
 
 ### `ttlama auth password-chg`
@@ -987,3 +987,89 @@ $ ttlama user profiles get [OPTIONS]
 * `--json`: Output the profile as JSON.
 * `--yaml`: Output the profile as YAML.
 * `--help`: Show this message and exit.
+
+## `ttlama backend`
+
+Operate local VPN backends.
+
+**Usage**:
+
+$ ttlama backend [OPTIONS] COMMAND [ARGS]...
+
+**Commands**:
+
+* `wg`: Manage WireGuard peers as TTL-LAMa leases.
+
+### `ttlama backend wg leases`
+
+Inspect and update local WireGuard leases.
+
+**Usage**:
+
+$ ttlama backend wg leases [OPTIONS] COMMAND [ARGS]...
+
+**Commands**:
+
+* `ls`: List leases, optionally for one interface.
+* `get`: Retrieve a lease from one interface.
+* `apply`: Apply lease addresses to a peer.
+* `delete`: Remove a peer from an interface.
+
+#### `ttlama backend wg leases ls`
+
+List leases from one interface or all interfaces.
+
+**Usage**:
+
+$ ttlama backend wg leases ls [OPTIONS]
+
+**Options**:
+
+* `--interface <str>`: WireGuard interface to inspect.  [default: all]
+* `--json`: Output leases as JSON.
+* `--yaml`: Output leases as YAML.
+* `--help`: Show this message and exit.
+
+#### `ttlama backend wg leases get`
+
+Retrieve a peer by public key using a JSON or YAML lease document.
+
+**Usage**:
+
+$ ttlama backend wg leases get [OPTIONS]
+
+**Options**:
+
+* `--lease <path>`: JSON or YAML lease document; use `-` for standard input.  [required]
+* `--json`: Output the peer state as JSON.
+* `--yaml`: Output the peer state as YAML.
+* `--check`: Exit with status 1 when the peer is not found.
+* `--help`: Show this message and exit.
+
+#### `ttlama backend wg leases apply`
+
+Apply the addresses in a JSON or YAML lease document to a peer.
+
+**Usage**:
+
+$ ttlama backend wg leases apply [OPTIONS]
+
+**Options**:
+
+* `--lease <path>`: JSON or YAML lease document; use `-` for standard input.  [required]
+* `--help`: Show this message and exit.
+
+#### `ttlama backend wg leases delete`
+
+Remove a peer using its JSON or YAML lease document.
+
+**Usage**:
+
+$ ttlama backend wg leases delete [OPTIONS]
+
+**Options**:
+
+* `--lease <path>`: JSON or YAML lease document; use `-` for standard input.  [required]
+* `--help`: Show this message and exit.
+
+For `get`, `apply`, and `delete`, the input document must contain `interface`, `lease_id`, `device_id`, `public_key`, and `addresses`. The interface must be specific, not `all`. Mutation commands emit a JSON status object on standard output; execution errors are written to standard error with exit status 1. With `get --check`, an absent peer also produces exit status 1.

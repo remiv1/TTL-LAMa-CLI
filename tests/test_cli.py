@@ -9,6 +9,8 @@ from typer.testing import CliRunner
 
 from ttlama_cli.cli import app
 from ttlama_cli.commands import config as config_commands
+from ttlama_cli.commands.backend.wireguard import peers as wireguard_commands
+from ttlama_cli.drivers._common import RunResult, VPNLease, VPNLeaseState
 from ttlama_cli.objects import HTTPMethod, SpecificRequest
 
 def test_help_is_available() -> None:
@@ -47,6 +49,250 @@ def test_admin_users_help_is_available() -> None:
 
     assert result.exit_code == 0
     assert "Usage:" in result.output
+
+
+def test_wireguard_lease_list_json(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """JSON output contains the interface and all peer lease fields."""
+    driver = Mock(
+        list_leases=Mock(return_value=[VPNLeaseState(
+            interface="wg0",
+            identity="public-key",
+            addresses=("10.101.0.0/24", "10.102.0.0/24"),
+        )]),
+    )
+    driver_factory = Mock(return_value=driver)
+    monkeypatch.setattr(wireguard_commands, "WireGuardDriver", driver_factory)
+
+    result = CliRunner().invoke(app, ["backend", "wg", "leases", "ls", "--json"])
+
+    assert result.exit_code == 0
+    assert json.loads(result.output) == [{
+        "interface": "wg0",
+        "identity": "public-key",
+        "addresses": ["10.101.0.0/24", "10.102.0.0/24"],
+    }]
+    driver_factory.assert_called_once_with("all")
+
+
+def test_wireguard_lease_list_empty_yaml(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """YAML output for an empty list remains an empty collection."""
+    driver = Mock(list_leases=Mock(return_value=[]))
+    monkeypatch.setattr(
+        wireguard_commands,
+        "WireGuardDriver",
+        Mock(return_value=driver),
+    )
+
+    result = CliRunner().invoke(app, ["backend", "wg", "leases", "ls", "--yaml"])
+
+    assert result.exit_code == 0
+    assert result.output.strip() == "[]"
+
+
+def test_wireguard_lease_list_interface_option(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The selected interface is passed to the driver and shown in the table."""
+    driver = Mock(list_leases=Mock(return_value=[VPNLeaseState(
+        interface="wg0",
+        identity="public-key",
+        addresses=("10.101.0.0/24",),
+    )]))
+    driver_factory = Mock(return_value=driver)
+    monkeypatch.setattr(wireguard_commands, "WireGuardDriver", driver_factory)
+
+    result = CliRunner().invoke(
+        app,
+        ["backend", "wg", "leases", "ls", "--interface", "wg0"],
+    )
+
+    assert result.exit_code == 0
+    assert "wg0" in result.output
+    assert "public-key" in result.output
+    driver_factory.assert_called_once_with("wg0")
+
+
+def test_wireguard_lease_list_rejects_multiple_output_formats() -> None:
+    """JSON and YAML output options cannot be combined."""
+    result = CliRunner().invoke(
+        app,
+        ["backend", "wg", "leases", "ls", "--json", "--yaml"],
+    )
+
+    assert result.exit_code == 1
+    assert "Choose only one output option" in result.output
+
+
+def test_wireguard_lease_get_returns_json_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Get reads the full lease from stdin and returns the peer state."""
+    payload = {
+        "interface": "wg0",
+        "lease_id": "lease-1",
+        "device_id": "device-1",
+        "public_key": "public-key",
+        "addresses": ["10.101.0.0/24"],
+    }
+    state = VPNLeaseState(
+        interface="wg0",
+        identity="public-key",
+        addresses=("10.101.0.0/24",),
+    )
+    driver = Mock(get_lease=Mock(return_value=state))
+    driver_factory = Mock(return_value=driver)
+    monkeypatch.setattr(wireguard_commands, "WireGuardDriver", driver_factory)
+
+    result = CliRunner().invoke(
+        app,
+        ["backend", "wg", "leases", "get", "--lease", "-", "--json"],
+        input=json.dumps(payload),
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.output) == {
+        "interface": "wg0",
+        "identity": "public-key",
+        "addresses": ["10.101.0.0/24"],
+    }
+    driver_factory.assert_called_once_with("wg0")
+    driver.get_lease.assert_called_once_with("public-key", "wg0")
+
+
+def test_wireguard_lease_get_missing_returns_null_and_check_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A missing lease returns null and --check signals the absence."""
+    payload = {
+        "interface": "wg0",
+        "lease_id": "lease-1",
+        "device_id": "device-1",
+        "public_key": "public-key",
+        "addresses": ["10.101.0.0/24"],
+    }
+    driver = Mock(get_lease=Mock(return_value=None))
+    monkeypatch.setattr(
+        wireguard_commands,
+        "WireGuardDriver",
+        Mock(return_value=driver),
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "backend", "wg", "leases", "get", "--lease", "-", "--json", "--check",
+        ],
+        input=json.dumps(payload),
+    )
+
+    assert result.exit_code == 1
+    assert json.loads(result.output) is None
+
+
+def test_wireguard_lease_apply_reads_yaml_and_returns_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Apply accepts YAML from stdin and returns a JSON status object."""
+    payload = (
+        "interface: wg0\n"
+        "lease_id: lease-1\n"
+        "device_id: device-1\n"
+        "public_key: public-key\n"
+        "addresses:\n"
+        "  - 10.101.0.0/24\n"
+    )
+    driver = Mock(apply_lease=Mock(return_value=RunResult(0, "", "")))
+    driver_factory = Mock(return_value=driver)
+    monkeypatch.setattr(wireguard_commands, "WireGuardDriver", driver_factory)
+
+    result = CliRunner().invoke(
+        app,
+        ["backend", "wg", "leases", "apply", "--lease", "-"],
+        input=payload,
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.output) == {
+        "success": True,
+        "operation": "apply",
+        "interface": "wg0",
+        "identity": "public-key",
+    }
+    driver_factory.assert_called_once_with("wg0")
+    driver.apply_lease.assert_called_once_with(VPNLease(
+        lease_id="lease-1",
+        device_id="device-1",
+        public_key="public-key",
+        addresses=("10.101.0.0/24",),
+    ))
+
+
+def test_wireguard_lease_delete_returns_status(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delete revokes the peer and returns a JSON status object."""
+    payload = {
+        "interface": "wg0",
+        "lease_id": "lease-1",
+        "device_id": "device-1",
+        "public_key": "public-key",
+        "addresses": ["10.101.0.0/24"],
+    }
+    driver = Mock(revoke_lease=Mock(return_value=RunResult(0, "", "")))
+    monkeypatch.setattr(
+        wireguard_commands,
+        "WireGuardDriver",
+        Mock(return_value=driver),
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["backend", "wg", "leases", "delete", "--lease", "-"],
+        input=json.dumps(payload),
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.output) == {
+        "success": True,
+        "operation": "delete",
+        "interface": "wg0",
+        "identity": "public-key",
+    }
+    driver.revoke_lease.assert_called_once_with(VPNLease(
+        lease_id="lease-1",
+        device_id="device-1",
+        public_key="public-key",
+        addresses=("10.101.0.0/24",),
+    ))
+
+
+def test_wireguard_lease_mutation_rejects_all_interfaces(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mutation input must select one specific WireGuard interface."""
+    payload = {
+        "interface": "all",
+        "lease_id": "lease-1",
+        "device_id": "device-1",
+        "public_key": "public-key",
+        "addresses": ["10.101.0.0/24"],
+    }
+    driver_factory = Mock()
+    monkeypatch.setattr(wireguard_commands, "WireGuardDriver", driver_factory)
+
+    result = CliRunner().invoke(
+        app,
+        ["backend", "wg", "leases", "apply", "--lease", "-"],
+        input=json.dumps(payload),
+    )
+
+    assert result.exit_code == 1
+    assert "specific interface" in result.output
+    driver_factory.assert_not_called()
 
 
 def test_global_config_group_is_registered() -> None:

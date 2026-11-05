@@ -18,6 +18,7 @@ from .commands.auth import app as auth_app
 from .commands.config import app as config_app, global_config_app
 from .commands.admin import app as admin_app
 from .commands.user import app as user_app
+from .commands.backend import app as backend_app
 
 app = typer.Typer(
     no_args_is_help=True,
@@ -28,6 +29,7 @@ app.add_typer(config_app, name="config")
 app.add_typer(global_config_app, name="global-config")
 app.add_typer(admin_app, name="admin")
 app.add_typer(user_app, name="user")
+app.add_typer(backend_app, name="backend")
 
 
 def main() -> None:

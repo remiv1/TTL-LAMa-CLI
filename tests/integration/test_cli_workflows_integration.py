@@ -234,7 +234,7 @@ def test_authentication_lifecycle_for_a_regular_user(
     assert token_store.get_access_token(server_config[0], server_config[1]) is None
     inactive = _invoke(runner, ["auth", "status", "--json"])
     assert cast(dict[str, object], _json_value(inactive))["session"] == "inactive"
-    _invoke(runner, ["auth", "status", "--check-connected"], exit_code=1)
+    _invoke(runner, ["auth", "status", "--check"], exit_code=1)
 
     _login(runner, username, new_password)
     relogin_logout_result = _invoke(runner, ["auth", "logout"])

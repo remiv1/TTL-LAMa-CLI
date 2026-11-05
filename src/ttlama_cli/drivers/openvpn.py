@@ -5,53 +5,55 @@
 """
 from __future__ import annotations
 
-from ._common import VPNDriver
+from ._common import VPNDriver, VPNLease, VPNLeaseState, RunResult
 
 class OpenVPNDriver(VPNDriver):
     """OpenVPN driver implementation for TTL-LAMa CLI."""
 
-    def list_leases(self, device_id: str | None = None) -> list[dict[str, str]]:
-        """List leases, optionally filtered by device ID.
+    def list_leases(self) -> list[VPNLeaseState]:
+        """List all VPN leases.
         
-        :param device_id: Optional device ID to filter leases by.
-        :type device_id: str | None
-        :return: List of leases as dictionaries.
-        :rtype: list[dict[str, str]]
+        :return: List of leases as VPNLeaseState objects.
+        :rtype: list[VPNLeaseState]
         """
         raise NotImplementedError
 
-    def get_lease(self, lease_id: str) -> dict[str, str]:
-        """Retrieve a lease by its ID.
+    def get_lease(self, identity: str) -> VPNLeaseState | None:
+        """Retrieve a lease by its identity.
         
-        :param lease_id: ID of the lease to retrieve.
-        :type lease_id: str
-        :return: Lease data as a dictionary.
-        :rtype: dict[str, str]
+        :param identity: Identity of the lease to retrieve.
+        :type identity: str
+        :return: Lease data as a VPNLeaseState object.
+        :rtype: VPNLeaseState | None
         """
         raise NotImplementedError
 
-    def create_lease(self, lease_data: dict[str, str]) -> int:
+    def create_lease(self, lease_data: VPNLease) -> RunResult:
         """Create a new lease with the given data.
         
-        :param lease_data: Data for the new lease.
-        :type lease_data: dict[str, str]
-        :return: ID of the created lease.
-        :rtype: int
+        :param lease_data: VPNLease object containing lease information.
+        :type lease_data: VPNLease
+        :return: Result of the lease creation as a RunResult object.
+        :rtype: RunResult
         """
         raise NotImplementedError
 
-    def apply_lease(self, file_path: str) -> None:
-        """Apply a lease from a file.
+    def apply_lease(self, lease_data: VPNLease) -> RunResult:
+        """Apply a lease from its data.
         
-        :param file_path: Path to the lease file.
-        :type file_path: str
+        :param lease_data: VPNLease object containing lease information to apply.
+        :type lease_data: VPNLease
+        :return: Result of applying the lease as a RunResult object.
+        :rtype: RunResult
         """
         raise NotImplementedError
 
-    def revoke_lease(self, lease_id: str) -> None:
-        """Revoke a lease by its ID.
+    def revoke_lease(self, lease_data: VPNLease) -> RunResult:
+        """Revoke a lease by its data.
         
-        :param lease_id: ID of the lease to revoke.
-        :type lease_id: str
+        :param lease_data: VPNLease object containing lease information to revoke.
+        :type lease_data: VPNLease
+        :return: Result of the lease revocation as a RunResult object.
+        :rtype: RunResult
         """
         raise NotImplementedError

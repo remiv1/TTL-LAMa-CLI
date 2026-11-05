@@ -391,7 +391,7 @@ def status(
     yaml_output: bool = typer.Option(False, "--yaml", help="Output status as YAML."),
     check_connected: bool = typer.Option(
         False,
-        "--check-connected",
+        "--check",
         help="Exit with status 1 when no active session is available.",
     ),
 ) -> None:

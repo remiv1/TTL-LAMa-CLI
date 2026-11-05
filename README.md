@@ -51,7 +51,7 @@ validates and displays the diff without applying it.
 
 This group writes only the application configuration file selected by the
 server's `TTL_LAMA_CONFIG_FILE` setting. It does not manage profile definitions,
-`access-profiles.yml`, or profile policies in the database. Replace masked
+`backend_config.yml`, or profile policies in the database. Replace masked
 secrets with values or secret-file references before applying. Environment
 variables continue to override YAML settings. Applying a file requires an
 external server restart, and the CLI warns when the target is not covered by a
@@ -112,11 +112,11 @@ Inspect the current session, including active session expirations, or close the 
 ttlama auth status
 ttlama auth status --json
 ttlama auth status --yaml
-ttlama auth status --check-connected
+ttlama auth status --check
 ttlama auth logout
 ```
 
-`status` does not display access tokens or their hashes. With no locally stored token it reports a disconnected state and exits successfully; use `--check-connected` to return a nonzero exit code instead. `logout` revokes only the current CLI session. It removes the local token after success, and also cleans up a token the server reports as invalid; a server/network error keeps the token so the operation can be retried. JSON and YAML status output contain `session` (`active` or `inactive`), `user` (`null` without a local token; otherwise `id`, `username`, `email`, and `is_admin`), and `sessions`, a list of `expires_at` timestamps.
+`status` does not display access tokens or their hashes. With no locally stored token it reports a disconnected state and exits successfully; use `--check` to return a nonzero exit code instead. `logout` revokes only the current CLI session. It removes the local token after success, and also cleans up a token the server reports as invalid; a server/network error keeps the token so the operation can be retried. JSON and YAML status output contain `session` (`active` or `inactive`), `user` (`null` without a local token; otherwise `id`, `username`, `email`, and `is_admin`), and `sessions`, a list of `expires_at` timestamps.
 
 ## Configuration and credentials
 
@@ -165,7 +165,7 @@ ttlama
  │    │
  │    ├── logout
  │    ├── password-chg
- │    └── status
+ │    └── status [--json | --yaml | none] [--check | none]
  │
  ├── user → **Utilization** → **_What am I using ?_**
  │    ├── get

@@ -598,7 +598,7 @@ def test_status_without_token_is_informative_or_checkable(
 
     runner = CliRunner()
     result = runner.invoke(app, ["auth", "status"])
-    checked = runner.invoke(app, ["auth", "status", "--check-connected"])
+    checked = runner.invoke(app, ["auth", "status", "--check"])
 
     assert result.exit_code == 0
     assert "inactive" in result.output

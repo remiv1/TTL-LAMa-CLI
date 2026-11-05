@@ -50,7 +50,7 @@ sans l’écrire. `apply --file` affiche les changements et demande confirmation
 
 Ce groupe écrit uniquement le fichier de configuration applicatif désigné par
 `TTL_LAMA_CONFIG_FILE` côté serveur. Il ne gère ni les définitions de profils,
-ni `access-profiles.yml`, ni les policies de profils en base. Remplacez les
+ni `backend_config.yml`, ni les policies de profils en base. Remplacez les
 secrets masqués par leur valeur ou une référence à un fichier secret avant
 l’application. Les variables d’environnement restent prioritaires sur le YAML.
 L’application nécessite un redémarrage externe du serveur ; la CLI avertit si
@@ -112,11 +112,11 @@ Consultez la session courante, avec les dates d’expiration des sessions active
 ttlama auth status
 ttlama auth status --json
 ttlama auth status --yaml
-ttlama auth status --check-connected
+ttlama auth status --check
 ttlama auth logout
 ```
 
-**`status`** n’affiche ni jeton d’accès ni hash. Sans jeton enregistré localement, la commande indique que la session est inactive et se termine avec succès ; **`--check-connected`** renvoie un code non nul dans ce cas. **`logout`** révoque uniquement la session CLI courante. Il supprime le jeton local après succès ou si le serveur le déclare invalide ; une erreur réseau ou serveur le conserve pour permettre une nouvelle tentative. Les sorties JSON et YAML de **`status`** contiennent `session` (`active` ou `inactive`), `user` (`null` sans jeton local ; sinon `id`, `username`, `email` et `is_admin`), ainsi que `sessions`, une liste de dates `expires_at`.
+**`status`** n’affiche ni jeton d’accès ni hash. Sans jeton enregistré localement, la commande indique que la session est inactive et se termine avec succès ; **`--check`** renvoie un code non nul dans ce cas. **`logout`** révoque uniquement la session CLI courante. Il supprime le jeton local après succès ou si le serveur le déclare invalide ; une erreur réseau ou serveur le conserve pour permettre une nouvelle tentative. Les sorties JSON et YAML de **`status`** contiennent `session` (`active` ou `inactive`), `user` (`null` sans jeton local ; sinon `id`, `username`, `email` et `is_admin`), ainsi que `sessions`, une liste de dates `expires_at`.
 
 ## Configuration et identifiants
 
@@ -182,7 +182,7 @@ ttlama
  │    │
  │    ├── logout
  │    ├── password-chg
- │    └── status
+ │    └── status [--json | --yaml | none] [--check | none]
  │
  ├── user → **Utilisation** → **_Qu'est-ce que j'utilise ?_**
  │    ├── get
@@ -242,10 +242,10 @@ ttlama
       │
       ├── wg
       │     └── leases
-      │           ├── ls [--device <id> | none ]
-      │           ├── get --lease <lease_id>
-      │           ├── apply --file <file_path>
-      │           └── delete --lease <lease_id>
+      │           ├── ls [--interface <interface>] [--json | --yaml]
+      │           ├── get --lease - [--json | --yaml] [--check]
+      │           ├── apply --lease -
+      │           └── delete --lease -
       │
       ├── openvpn
       │     └── ...
@@ -255,6 +255,8 @@ ttlama
 ```
 
 Retrouvez la documentation complète des commandes CLI dans [cli-reference.md](./cli-reference.md).
+
+Les commandes `backend wg leases get`, `apply` et `delete` lisent un objet JSON ou YAML sur l'entrée standard avec `--lease -`. Le document comprend `interface`, `lease_id`, `device_id`, `public_key` et `addresses`; `interface` doit désigner une interface précise. Si le peer est absent, `get` affiche `null` en JSON/YAML ou un message en mode tableau; `--check` retourne alors le code 1. `apply` et `delete` renvoient un statut JSON sur la sortie standard.
 
 ### Exemples de fichiers d’entrée
 

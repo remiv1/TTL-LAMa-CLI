@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import cast
 
@@ -40,7 +41,7 @@ def validate_output_options(json_output: bool, yaml_output: bool) -> None:
 
 
 def display_structured_output(
-	data: dict[str, object] | list[dict[str, object]],
+    data: dict[str, object] | list[dict[str, object]] | None,
 	*,
 	json_output: bool,
 	yaml_output: bool,
@@ -76,20 +77,25 @@ def request_configured_api(
 
 
 def load_data_file(file_path: Path, resource_name: str) -> dict[str, JSONValue]:
-    """Load a JSON or YAML object from a UTF-8 request file.
+    """Load a JSON or YAML object from a file or standard input.
 
-    :param file_path: The path to the request file.
+    :param file_path: The request file path, or ``-`` to read standard input.
     :type file_path: Path
     :param resource_name: The name of the resource being loaded (for error messages).
     :type resource_name: str
     :returns: The parsed JSON or YAML object as a dictionary.
     :rtype: dict[str, JSONValue]
     """
+    source = "standard input" if file_path == Path("-") else f"'{file_path}'"
     try:
-        contents = file_path.read_text(encoding="utf-8")
+        contents = (
+            sys.stdin.read()
+            if file_path == Path("-")
+            else file_path.read_text(encoding="utf-8")
+        )
     except (OSError, UnicodeError) as error:
         typer.echo(
-            f"Error reading {resource_name} data file '{file_path}': {error}",
+            f"Error reading {resource_name} data from {source}: {error}",
             err=True,
         )
         raise typer.Exit(code=1) from error
@@ -105,7 +111,7 @@ def load_data_file(file_path: Path, resource_name: str) -> dict[str, JSONValue]:
 
     if not isinstance(data, dict):
         typer.echo(
-            f"{resource_name.capitalize()} data file must contain an object "
+            f"{resource_name.capitalize()} data must contain an object "
             "at the top level.",
             err=True,
         )
