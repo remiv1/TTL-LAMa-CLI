@@ -3,7 +3,7 @@
 [English](../README.md) | Français
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](../LICENSE)
+[![Licence : Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](../LICENSE)
 [![Typer](https://img.shields.io/badge/CLI-Typer-009688)](https://typer.tiangolo.com/)
 ![Coverage](https://img.shields.io/badge/Coverage-77%25-yellow)
 
@@ -15,11 +15,10 @@ Le paquet est autonome dans le dépôt `cli/` et peut évoluer indépendamment d
 
 ## État du projet
 
-La CLI est en fin de développement. Il ne reste qu'à implémenter la fonction de conciliation des états `ttlama sync`.
+La CLI est en développement. Elle fournit la configuration du serveur, l’authentification interne et OIDC, la gestion des ressources en libre-service et côté administrateur, la configuration globale et des commandes locales pour les pairs WireGuard. La commande racine propose aussi `--version` (`-v`).
 
 | Groupe | Commandes disponibles | Commandes prévues |
 | --- | --- | --- |
-| `sync` | — | `sync` |
 | `config` | `set-server` | — |
 | `auth` | `login internal`, `login oidc`, `logout`, `password-chg`, `status` | — |
 | `user` | `get`, `profiles ls`, `profiles get`, `devices ls/get/add/delete`, `leases ls/get/create/revoke` | — |
@@ -28,6 +27,10 @@ La CLI est en fin de développement. Il ne reste qu'à implémenter la fonction 
 | `admin devices` | `ls`, `get`, `update`, `block`, `delete` | — |
 | `admin leases` | `ls`, `get`, `revoke` | — |
 | `admin profiles` | `ls`, `get`, `create`, `update`, `delete` | — |
+| `backend wg leases` | `ls`, `get`, `apply`, `delete` | — |
+| `backend openvpn leases` | — | `ls`, `get`, `apply`, `delete` |
+
+Les commandes `backend wg leases` inspectent ou modifient une interface WireGuard locale ; elles n’effectuent pas de réconciliation périodique avec le serveur. Voir la [référence des commandes](./cli-reference.md) pour les arguments et les formats d’entrée exacts.
 
 Les administrateurs peuvent lister les baux en combinant `--user`, `--device`, `--profile` et `--status` (`active`, `expired` ou `revoked`). `get` affiche tous les champs du bail, dont son état calculé et ses dates. `revoke` demande une confirmation avant la révocation; l’historique est conservé.
 
@@ -66,7 +69,7 @@ ttlama global-config apply --file config.yml --dry-run
 
 ## Installation et utilisation
 
-A l'avenir, le paquet sera publié sur PyPI pour une installation simplifiée via `pip install ttlama-cli`.
+Les métadonnées du projet définissent le paquet `ttlama-cli`, qui installe la commande `ttlama`. La procédure ci-dessous installe la version du dépôt en mode éditable, sans dépendre d’une publication sur PyPI. La publication sur PyPi est prévu prochainement.
 
 Prérequis : Python 3.12 ou supérieur et une instance TTL-LAMa accessible en HTTP(S). Depuis le dossier `cli/`, installez le paquet dans un environnement virtuel :
 
@@ -127,7 +130,7 @@ Le jeton d’accès est enregistré dans le trousseau système via `keyring`, da
 ## Organisation du code
 
 - `src/ttlama_cli/cli.py` déclare la commande `ttlama` et ses groupes.
-- `src/ttlama_cli/commands/` contient les commandes Typer, notamment `auth`, `config`, `admin` et `user`.
+- `src/ttlama_cli/commands/` contient les commandes Typer, notamment `auth`, `config`, `global-config`, `admin`, `user` et `backend`.
 - `src/ttlama_cli/api_client.py` effectue les appels HTTP à l’API.
 - `src/ttlama_cli/config_store.py` valide et persiste l’instance configurée.
 - `src/ttlama_cli/token_store.py` encapsule l’accès au trousseau système.
@@ -169,11 +172,12 @@ Le lanceur nécessite Podman Compose et l’accès à l’image GHCR. Il ne mont
 
 ## Arbre des commandes
 
-Voici l’arborescence cible des commandes disponibles avec `ttlama` :
+Voici l’arborescence des commandes actuellement disponibles avec `ttlama` :
 
 ```md
-ttlama
- ├── sync → **Réconciliation** → **_Synchronisation des états_**
+ttlama [--version]
+ ├── config
+ │    └── set-server <url> [--port <port>]
  │
  ├── auth → **Authentification** → **_Qui suis-je ?_**
  │    ├── login
@@ -211,8 +215,8 @@ ttlama
  │
  ├── admin → **Administration** → **_Qui a doit à quoi / Quel est l'état administré ?_**
  │    ├── users
- │    │     ├── ls [--device <id> &/| --lease <id> &/| --profile <id> | none]
- │    │     ├── get --user <user_id>
+ │    │     ├── ls [--device <id>] [--lease <id>] [--profile <id>]
+ │    │     ├── get <user_id>
  │    │     ├── create --file <file_path>
  │    │     ├── update --user <user_id> --file <file_path>
  │    │     ├── delete --user <user_id>
@@ -232,13 +236,13 @@ ttlama
  │    │     └── revoke --lease <lease_id>
  │    │
  │    └── profiles
- │          ├── ls [--user <id> | none] [--device <id> | none] [--lease <id> | none]
+ │          ├── ls [--user <id>] [--device <id>] [--lease <id>]
  │          ├── get --profile <profile_id> [--json | --yaml | none]
  │          ├── create --file <file_path>
  │          ├── update --profile <profile_id> --file <file_path>
  │          └── delete --profile <profile_id>
  │
- └── backend → **Backend** → **_Opérations vers le serveur et configurations_**
+ └── backend → **Backend VPN local**
       │
       ├── wg
       │     └── leases
@@ -247,14 +251,14 @@ ttlama
       │           ├── apply --lease -
       │           └── delete --lease -
       │
-      ├── openvpn
+      ├── openvpn (à venir)
       │     └── ...
       │
       └── ...
 
 ```
 
-Retrouvez la documentation complète des commandes CLI dans [cli-reference.md](./cli-reference.md).
+Les options globales incluent aussi `--install-completion` et `--show-completion`. Retrouvez la documentation complète des commandes CLI dans [cli-reference.md](./cli-reference.md).
 
 Les commandes `backend wg leases get`, `apply` et `delete` lisent un objet JSON ou YAML sur l'entrée standard avec `--lease -`. Le document comprend `interface`, `lease_id`, `device_id`, `public_key` et `addresses`; `interface` doit désigner une interface précise. Si le peer est absent, `get` affiche `null` en JSON/YAML ou un message en mode tableau; `--check` retourne alors le code 1. `apply` et `delete` renvoient un statut JSON sur la sortie standard.
 

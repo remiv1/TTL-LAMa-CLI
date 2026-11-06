@@ -4,7 +4,7 @@ English | [Français](https://github.com/remiv1/TTL-LAMa-CLI/blob/main/docs/READ
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Typer](https://img.shields.io/badge/CLI-Typer-009688)](https://typer.tiangolo.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/remiv1/TTL-LAMa-CLI/blob/main/LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](https://github.com/remiv1/TTL-LAMa-CLI/blob/main/LICENSE)
 ![Coverage](https://img.shields.io/badge/Coverage-77%25-yellow)
 
 [![Logo](https://github.com/remiv1/TTL-LAMa/blob/main/docs/img/logo_300ppp.png)](https://github.com/remiv1/TTL-LAMa/blob/main/docs/img/logo_300ppp.png)
@@ -15,7 +15,7 @@ The CLI lives in the `cli/` directory and can evolve independently of the server
 
 ## Project status
 
-The CLI is under development. Currently available commands let you configure the server address, authenticate with an internal account, check and close the current session, change the signed-in user's password, inspect their overview, profiles, devices, and leases, and manage users, devices, leases, and profiles. Commands marked as planned below are targets for future implementation, not commands that can be used today.
+The CLI is under development. It provides server configuration, internal and OIDC authentication, self-service and administrative resource management, global configuration operations, and local WireGuard peer commands. The root command also provides `--version` (`-v`).
 
 | Group | Available commands | Planned commands |
 | --- | --- | --- |
@@ -27,8 +27,10 @@ The CLI is under development. Currently available commands let you configure the
 | `admin devices` | `ls`, `get`, `update`, `block`, `delete` | — |
 | `admin leases` | `ls`, `get`, `revoke` | — |
 | `admin profiles` | `ls`, `get`, `create`, `update`, `delete` | — |
+| `backend wg leases` | `ls`, `get`, `apply`, `delete` | — |
+| `backend openvpn leases` | — | `ls`, `get`, `apply`, `delete` |
 
-Remaining planned commands will cover the resources and operations exposed by the [v1 API](https://github.com/remiv1/TTL-LAMa/blob/main/src/api/v1/README.md) (see the github.com/remiv1/TTL-LAMa repository). Their filtering options and file formats will be defined as they are implemented.
+The `backend wg leases` commands inspect or mutate a local WireGuard interface; they do not provide scheduled reconciliation with the server. See the [command reference](docs/cli-reference.md) for exact arguments and input requirements.
 
 Administrators can list leases using any combination of `--user`, `--device`, `--profile`, and `--status` (`active`, `expired`, or `revoked`). `get` displays the complete lease, including its derived status and lifecycle timestamps. `revoke` asks for confirmation before revoking the lease; its history is retained.
 
@@ -66,7 +68,7 @@ ttlama global-config apply --file config.yml --dry-run
 
 ## Installation and usage
 
-The package is not yet published on PyPI. Once it is, it will be installable with `pip install ttlama-cli`.
+The distribution is named `ttlama-cli` and installs the `ttlama` command. The instructions below install the current source checkout in editable mode and do not depend on PyPI. A new release will be published to PyPI in the future.
 
 Requirements: Python 3.12 or later and an instance of TTL-LAMa accessible over HTTP(S). From the `cli/` directory, install the package in a virtual environment:
 
@@ -127,7 +129,7 @@ The access token is stored in the system keyring through `keyring`, in one entry
 ## Code layout
 
 - `src/ttlama_cli/cli.py` defines the `ttlama` command and its groups.
-- `src/ttlama_cli/commands/` contains the Typer commands, including `auth`, `config`, `admin`, and `user`.
+- `src/ttlama_cli/commands/` contains the Typer commands, including `auth`, `config`, `global-config`, `admin`, `user`, and `backend`.
 - `src/ttlama_cli/api_client.py` makes HTTP requests to the API.
 - `src/ttlama_cli/config_store.py` validates and persists the configured instance.
 - `src/ttlama_cli/token_store.py` encapsulates access to the system keyring.
@@ -154,10 +156,10 @@ The launcher requires Podman Compose and access to the GHCR image. It checks tha
 
 ## Command tree
 
-Here is the target command tree for the `ttlama` command:
+The current command groups are:
 
 ```md
-ttlama
+ttlama [--version]
  ├── auth → **Authentication** → **_Who am I ?_**
  │    ├── login
  │    │     ├── internal --user <username>
@@ -166,6 +168,9 @@ ttlama
  │    ├── logout
  │    ├── password-chg
  │    └── status [--json | --yaml | none] [--check | none]
+ │
+ ├── config
+ │    └── set-server <url> [--port <port>]
  │
  ├── user → **Utilization** → **_What am I using ?_**
  │    ├── get
@@ -196,7 +201,7 @@ ttlama
  │    │
  │    ├── users
  │    │     ├── ls [--device <id> | none ] [--lease <id> | none ] [--profile <id> | none]
- │    │     ├── get --user <user_id>
+ │    │     ├── get <user_id>
  │    │     ├── create --file <file_path>
  │    │     ├── update --user <user_id> --file <file_path>
  │    │     ├── delete --user <user_id>
@@ -216,13 +221,13 @@ ttlama
  │    │     └── revoke --lease <lease_id>
  │    │
  │    └── profiles
- │          ├── ls [--user <id> &/| --device <id> &/| --lease <id> | none]
+ │          ├── ls [--user <id>] [--device <id>] [--lease <id>]
  │          ├── get --profile <profile_id> [--json | --yaml | none]
  │          ├── create --file <file_path>
  │          ├── update --profile <profile_id> --file <file_path>
  │          └── delete --profile <profile_id>
  │
- └── backend → **Backend** → **_Server-side operations and configurations_**
+ └── backend → **Local VPN backend operations**
       │
       ├── wg
       │     └── leases
@@ -237,7 +242,7 @@ ttlama
       └── ...
 ```
 
-Retrieve the complete CLI command documentation in [cli-reference.md](https://github.com/remiv1/TTL-LAMa-CLI/blob/main/docs/cli-reference.md).
+The root command also supports `--install-completion` and `--show-completion`. Retrieve the complete CLI command documentation in [cli-reference.md](docs/cli-reference.md).
 
 ### Input file examples
 

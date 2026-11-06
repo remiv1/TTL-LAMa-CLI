@@ -1,13 +1,16 @@
-# `ttlama`
+# ttlama
 
 CLI to administrate TTL-LAMa.
 
 **Usage**:
 
-$ ttlama [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
+* `-v, --version`: Show the version of the TTL-LAMa CLI.
 * `--install-completion`: Install completion for the current shell.
 * `--show-completion`: Show completion for the current shell, to copy it or customize the installation.
 * `--help`: Show this message and exit.
@@ -19,6 +22,7 @@ $ ttlama [OPTIONS] COMMAND [ARGS]...
 * `global-config`: Read and manage the application...
 * `admin`: Admin commands for the TTL-LAMa CLI.
 * `user`: Commands for the authenticated TTL-LAMa user.
+* `backend`: Operate local VPN backends.
 
 ## `ttlama auth`
 
@@ -26,7 +30,9 @@ Authentication to a TTL-LAMa.
 
 **Usage**:
 
-$ ttlama auth [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama auth [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -45,7 +51,9 @@ Revoke the current session and remove its local token.
 
 **Usage**:
 
-$ ttlama auth logout [OPTIONS]
+```console
+ttlama auth logout [OPTIONS]
+```
 
 **Options**:
 
@@ -57,7 +65,9 @@ Display the current identity and active session expirations.
 
 **Usage**:
 
-$ ttlama auth status [OPTIONS]
+```console
+ttlama auth status [OPTIONS]
+```
 
 **Options**:
 
@@ -72,7 +82,9 @@ Change the password of the authenticated account.
 
 **Usage**:
 
-$ ttlama auth password-chg [OPTIONS]
+```console
+ttlama auth password-chg [OPTIONS]
+```
 
 **Options**:
 
@@ -84,7 +96,9 @@ Login to TTL-LAMa.
 
 **Usage**:
 
-$ ttlama auth login [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama auth login [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -101,7 +115,9 @@ Connect with an internal account to a TTL-LAMa session.
 
 **Usage**:
 
-$ ttlama auth login internal [OPTIONS]
+```console
+ttlama auth login internal [OPTIONS]
+```
 
 **Options**:
 
@@ -114,7 +130,9 @@ Sign in with the configured OIDC provider.
 
 **Usage**:
 
-$ ttlama auth login oidc [OPTIONS]
+```console
+ttlama auth login oidc [OPTIONS]
+```
 
 **Options**:
 
@@ -127,7 +145,9 @@ Configuration commands for TTL-LAMa CLI.
 
 **Usage**:
 
-$ ttlama config [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama config [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -148,7 +168,9 @@ Configure the server for TTL-LAMa CLI.
 
 **Usage**:
 
-$ ttlama config set-server [OPTIONS] {url}
+```console
+ttlama config set-server [OPTIONS] {url}
+```
 
 **Arguments**:
 
@@ -165,7 +187,9 @@ Read and manage the application configuration.
 
 **Usage**:
 
-$ ttlama global-config [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama global-config [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -184,7 +208,9 @@ Read and display the server&#x27;s current application configuration.
 
 **Usage**:
 
-$ ttlama global-config get [OPTIONS]
+```console
+ttlama global-config get [OPTIONS]
+```
 
 **Options**:
 
@@ -198,7 +224,9 @@ Compare a candidate file with the server configuration.
 
 **Usage**:
 
-$ ttlama global-config diff [OPTIONS]
+```console
+ttlama global-config diff [OPTIONS]
+```
 
 **Options**:
 
@@ -212,7 +240,9 @@ Validate a candidate configuration file on the server.
 
 **Usage**:
 
-$ ttlama global-config validate [OPTIONS]
+```console
+ttlama global-config validate [OPTIONS]
+```
 
 **Options**:
 
@@ -225,7 +255,9 @@ Validate, show, and optionally persist a candidate configuration.
 
 **Usage**:
 
-$ ttlama global-config apply [OPTIONS]
+```console
+ttlama global-config apply [OPTIONS]
+```
 
 **Options**:
 
@@ -239,7 +271,9 @@ Admin commands for the TTL-LAMa CLI.
 
 **Usage**:
 
-$ ttlama admin [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama admin [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -258,7 +292,9 @@ User management commands for the TTL-LAMa CLI.
 
 **Usage**:
 
-$ ttlama admin users [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama admin users [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -291,7 +327,9 @@ Manage users in the TTL-LAMa CLI.
 
 **Usage**:
 
-$ ttlama admin users ls [OPTIONS]
+```console
+ttlama admin users ls [OPTIONS]
+```
 
 **Options**:
 
@@ -311,7 +349,9 @@ Create a user from a JSON or YAML file.
 
 **Usage**:
 
-$ ttlama admin users create [OPTIONS]
+```console
+ttlama admin users create [OPTIONS]
+```
 
 **Options**:
 
@@ -329,7 +369,9 @@ Update a user from a JSON or YAML file.
 
 **Usage**:
 
-$ ttlama admin users update [OPTIONS]
+```console
+ttlama admin users update [OPTIONS]
+```
 
 **Options**:
 
@@ -350,7 +392,9 @@ Delete a user by ID.
 
 **Usage**:
 
-$ ttlama admin users delete [OPTIONS]
+```console
+ttlama admin users delete [OPTIONS]
+```
 
 **Options**:
 
@@ -368,7 +412,9 @@ Assign a profile to a user.
 
 **Usage**:
 
-$ ttlama admin users assign [OPTIONS]
+```console
+ttlama admin users assign [OPTIONS]
+```
 
 **Options**:
 
@@ -387,7 +433,9 @@ Revoke a profile assignment from a user.
 
 **Usage**:
 
-$ ttlama admin users unassign [OPTIONS]
+```console
+ttlama admin users unassign [OPTIONS]
+```
 
 **Options**:
 
@@ -408,7 +456,9 @@ Get a specific user in the TTL-LAMa CLI.
 
 **Usage**:
 
-$ ttlama admin users get [OPTIONS] {user_id}
+```console
+ttlama admin users get [OPTIONS] {user_id}
+```
 
 **Arguments**:
 
@@ -426,7 +476,9 @@ Device management commands for the TTL-LAMa CLI.
 
 **Usage**:
 
-$ ttlama admin devices [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama admin devices [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -455,7 +507,9 @@ List devices, optionally filtered by lease or profile.
 
 **Usage**:
 
-$ ttlama admin devices ls [OPTIONS]
+```console
+ttlama admin devices ls [OPTIONS]
+```
 
 **Options**:
 
@@ -478,7 +532,9 @@ Retrieve a device and display its details.
 
 **Usage**:
 
-$ ttlama admin devices get [OPTIONS] {device_id}
+```console
+ttlama admin devices get [OPTIONS]
+```
 
 **Options**:
 
@@ -498,7 +554,9 @@ Update a device from a JSON or YAML file.
 
 **Usage**:
 
-$ ttlama admin devices update [OPTIONS] {device_id}
+```console
+ttlama admin devices update [OPTIONS]
+```
 
 **Options**:
 
@@ -515,7 +573,9 @@ Block a device after confirmation and revoke its active leases.
 
 **Usage**:
 
-$ ttlama admin devices block [OPTIONS]
+```console
+ttlama admin devices block [OPTIONS]
+```
 
 **Options**:
 
@@ -533,7 +593,9 @@ Deletion revokes the device and its active leases but retains its history.
 
 **Usage**:
 
-$ ttlama admin devices delete [OPTIONS]
+```console
+ttlama admin devices delete [OPTIONS]
+```
 
 **Options**:
 
@@ -546,7 +608,9 @@ Lease management commands for the TTL-LAMa CLI.
 
 **Usage**:
 
-$ ttlama admin leases [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama admin leases [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -564,7 +628,9 @@ List leases, optionally filtered by user, device, profile, or status.
 
 **Usage**:
 
-$ ttlama admin leases ls [OPTIONS]
+```console
+ttlama admin leases ls [OPTIONS]
+```
 
 **Options**:
 
@@ -582,7 +648,9 @@ Retrieve a lease and display all of its fields.
 
 **Usage**:
 
-$ ttlama admin leases get [OPTIONS] {lease_id}
+```console
+ttlama admin leases get [OPTIONS]
+```
 
 **Options**:
 
@@ -597,7 +665,9 @@ Revoke a lease after confirmation while retaining its history.
 
 **Usage**:
 
-$ ttlama admin leases revoke [OPTIONS] {lease_id}
+```console
+ttlama admin leases revoke [OPTIONS]
+```
 
 **Options**:
 
@@ -610,7 +680,9 @@ Profile management commands for the TTL-LAMa CLI.
 
 **Usage**:
 
-$ ttlama admin profiles [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama admin profiles [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -641,7 +713,9 @@ List profiles, optionally filtered by user, device, or lease.
 
 **Usage**:
 
-$ ttlama admin profiles ls [OPTIONS]
+```console
+ttlama admin profiles ls [OPTIONS]
+```
 
 **Options**:
 
@@ -665,7 +739,9 @@ Retrieve a profile and display its updateable fields.
 
 **Usage**:
 
-$ ttlama admin profiles get [OPTIONS]
+```console
+ttlama admin profiles get [OPTIONS]
+```
 
 **Options**:
 
@@ -683,7 +759,9 @@ Create a profile from a JSON or YAML file.
 
 **Usage**:
 
-$ ttlama admin profiles create [OPTIONS]
+```console
+ttlama admin profiles create [OPTIONS]
+```
 
 **Options**:
 
@@ -701,7 +779,9 @@ Update a profile from a JSON or YAML file.
 
 **Usage**:
 
-$ ttlama admin profiles update [OPTIONS]
+```console
+ttlama admin profiles update [OPTIONS]
+```
 
 **Options**:
 
@@ -718,7 +798,9 @@ Revoke a profile and its dependent access.
 
 **Usage**:
 
-$ ttlama admin profiles delete [OPTIONS]
+```console
+ttlama admin profiles delete [OPTIONS]
+```
 
 **Options**:
 
@@ -731,7 +813,9 @@ Commands for the authenticated TTL-LAMa user.
 
 **Usage**:
 
-$ ttlama user [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama user [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -750,7 +834,9 @@ Display the current user, devices, leases, and assigned profiles.
 
 **Usage**:
 
-$ ttlama user get [OPTIONS]
+```console
+ttlama user get [OPTIONS]
+```
 
 **Options**:
 
@@ -764,7 +850,9 @@ Inspect devices owned by the authenticated user.
 
 **Usage**:
 
-$ ttlama user devices [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama user devices [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -788,7 +876,9 @@ List devices owned by the authenticated user.
 
 **Usage**:
 
-$ ttlama user devices ls [OPTIONS]
+```console
+ttlama user devices ls [OPTIONS]
+```
 
 **Options**:
 
@@ -809,7 +899,9 @@ Retrieve an owned device by ID.
 
 **Usage**:
 
-$ ttlama user devices get [OPTIONS] {device_id}
+```console
+ttlama user devices get [OPTIONS]
+```
 
 **Options**:
 
@@ -827,7 +919,9 @@ Add a device from a JSON or YAML file.
 
 **Usage**:
 
-$ ttlama user devices add [OPTIONS] {file_path}
+```console
+ttlama user devices add [OPTIONS]
+```
 
 **Options**:
 
@@ -843,7 +937,9 @@ Revoke an owned device and its active leases.
 
 **Usage**:
 
-$ ttlama user devices delete [OPTIONS] {device_id}
+```console
+ttlama user devices delete [OPTIONS]
+```
 
 **Options**:
 
@@ -856,7 +952,9 @@ Inspect leases owned by the authenticated user.
 
 **Usage**:
 
-$ ttlama user leases [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama user leases [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -880,7 +978,9 @@ List leases owned by the authenticated user.
 
 **Usage**:
 
-$ ttlama user leases ls [OPTIONS]
+```console
+ttlama user leases ls [OPTIONS]
+```
 
 **Options**:
 
@@ -901,7 +1001,9 @@ Retrieve an owned lease by ID.
 
 **Usage**:
 
-$ ttlama user leases get [OPTIONS]
+```console
+ttlama user leases get [OPTIONS]
+```
 
 **Options**:
 
@@ -919,7 +1021,9 @@ Create a lease from a JSON or YAML file.
 
 **Usage**:
 
-$ ttlama user leases create [OPTIONS]
+```console
+ttlama user leases create [OPTIONS]
+```
 
 **Options**:
 
@@ -935,7 +1039,9 @@ Revoke an owned lease without deleting its history.
 
 **Usage**:
 
-$ ttlama user leases revoke [OPTIONS]
+```console
+ttlama user leases revoke [OPTIONS]
+```
 
 **Options**:
 
@@ -948,7 +1054,9 @@ Inspect profiles assigned to the authenticated user.
 
 **Usage**:
 
-$ ttlama user profiles [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama user profiles [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
@@ -965,7 +1073,9 @@ List profiles actively assigned to the current user.
 
 **Usage**:
 
-$ ttlama user profiles ls [OPTIONS]
+```console
+ttlama user profiles ls [OPTIONS]
+```
 
 **Options**:
 
@@ -979,7 +1089,9 @@ Retrieve an assigned profile by ID.
 
 **Usage**:
 
-$ ttlama user profiles get [OPTIONS]
+```console
+ttlama user profiles get [OPTIONS]
+```
 
 **Options**:
 
@@ -994,82 +1106,144 @@ Operate local VPN backends.
 
 **Usage**:
 
-$ ttlama backend [OPTIONS] COMMAND [ARGS]...
+```console
+ttlama backend [OPTIONS] COMMAND [ARGS]...
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
 
 **Commands**:
 
 * `wg`: Manage WireGuard peers as TTL-LAMa leases.
 
-### `ttlama backend wg leases`
+### `ttlama backend wg`
 
-Inspect and update local WireGuard leases.
-
-**Usage**:
-
-$ ttlama backend wg leases [OPTIONS] COMMAND [ARGS]...
-
-**Commands**:
-
-* `ls`: List leases, optionally for one interface.
-* `get`: Retrieve a lease from one interface.
-* `apply`: Apply lease addresses to a peer.
-* `delete`: Remove a peer from an interface.
-
-#### `ttlama backend wg leases ls`
-
-List leases from one interface or all interfaces.
+Manage WireGuard peers as TTL-LAMa leases.
 
 **Usage**:
 
-$ ttlama backend wg leases ls [OPTIONS]
+```console
+ttlama backend wg [OPTIONS] COMMAND [ARGS]...
+```
 
 **Options**:
 
-* `--interface <str>`: WireGuard interface to inspect.  [default: all]
+* `--help`: Show this message and exit.
+
+**Commands**:
+
+* `leases`: Inspect WireGuard leases.
+
+#### `ttlama backend wg leases`
+
+Inspect WireGuard leases.
+
+**Usage**:
+
+```console
+ttlama backend wg leases [OPTIONS] COMMAND [ARGS]...
+```
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+**Commands**:
+
+* `ls`: List WireGuard peers as leases.
+* `get`: Retrieve a WireGuard lease using its full...
+* `apply`: Apply a WireGuard lease from a JSON or...
+* `delete`: Remove a WireGuard lease using its full...
+
+##### `ttlama backend wg leases ls`
+
+List WireGuard peers as leases.
+
+:param interface: The WireGuard interface to inspect, or ``all``.
+:type interface: str
+:param json_output: Whether to output leases as JSON.
+:type json_output: bool
+:param yaml_output: Whether to output leases as YAML.
+:type yaml_output: bool
+
+**Usage**:
+
+```console
+ttlama backend wg leases ls [OPTIONS]
+```
+
+**Options**:
+
+* `--interface <str>`: WireGuard interface to inspect (defaults to all interfaces).  [default: all]
 * `--json`: Output leases as JSON.
 * `--yaml`: Output leases as YAML.
 * `--help`: Show this message and exit.
 
-#### `ttlama backend wg leases get`
+##### `ttlama backend wg leases get`
 
-Retrieve a peer by public key using a JSON or YAML lease document.
+Retrieve a WireGuard lease using its full input document.
 
-**Usage**:
-
-$ ttlama backend wg leases get [OPTIONS]
-
-**Options**:
-
-* `--lease <path>`: JSON or YAML lease document; use `-` for standard input.  [required]
-* `--json`: Output the peer state as JSON.
-* `--yaml`: Output the peer state as YAML.
-* `--check`: Exit with status 1 when the peer is not found.
-* `--help`: Show this message and exit.
-
-#### `ttlama backend wg leases apply`
-
-Apply the addresses in a JSON or YAML lease document to a peer.
+:param file_path: JSON or YAML lease data path, or ``-`` for standard input.
+:type file_path: Path
+:param json_output: Whether to output the lease as JSON.
+:type json_output: bool
+:param yaml_output: Whether to output the lease as YAML.
+:type yaml_output: bool
+:param check: Whether to return a non-zero status when the lease is absent.
+:type check: bool
 
 **Usage**:
 
-$ ttlama backend wg leases apply [OPTIONS]
+```console
+ttlama backend wg leases get [OPTIONS]
+```
 
 **Options**:
 
-* `--lease <path>`: JSON or YAML lease document; use `-` for standard input.  [required]
+* `--lease <path>`: JSON or YAML lease data; use &#x27;-&#x27; to read standard input.  [required]
+* `--json`: Output the lease as JSON.
+* `--yaml`: Output the lease as YAML.
+* `--check`: Exit with status 1 when the lease is not found.
 * `--help`: Show this message and exit.
 
-#### `ttlama backend wg leases delete`
+##### `ttlama backend wg leases apply`
 
-Remove a peer using its JSON or YAML lease document.
+Apply a WireGuard lease from a JSON or YAML document.
+
+:param file_path: JSON or YAML lease data path, or ``-`` for standard input.
+:type file_path: Path
 
 **Usage**:
 
-$ ttlama backend wg leases delete [OPTIONS]
+```console
+ttlama backend wg leases apply [OPTIONS]
+```
 
 **Options**:
 
-* `--lease <path>`: JSON or YAML lease document; use `-` for standard input.  [required]
+* `--lease <path>`: JSON or YAML lease data; use &#x27;-&#x27; to read standard input.  [required]
 * `--help`: Show this message and exit.
+
+##### `ttlama backend wg leases delete`
+
+Remove a WireGuard lease using its full input document.
+
+:param file_path: JSON or YAML lease data path, or ``-`` for standard input.
+:type file_path: Path
+
+**Usage**:
+
+```console
+ttlama backend wg leases delete [OPTIONS]
+```
+
+**Options**:
+
+* `--lease <path>`: JSON or YAML lease data; use &#x27;-&#x27; to read standard input.  [required]
+* `--help`: Show this message and exit.
+
+## WireGuard lease documents
 
 For `get`, `apply`, and `delete`, the input document must contain `interface`, `lease_id`, `device_id`, `public_key`, and `addresses`. The interface must be specific, not `all`. Mutation commands emit a JSON status object on standard output; execution errors are written to standard error with exit status 1. With `get --check`, an absent peer also produces exit status 1.

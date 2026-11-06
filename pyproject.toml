@@ -4,8 +4,18 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ttlama-cli"
+authors = [
+    { name = "Rémi Verschuur|rverschuur@audit-io.fr|", email = "rverschuur@audit-io.fr" },
+]
+keywords = ["TTL-LAMa", "CLI"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+]
 version = "1.0.0"
-description = "Interface en ligne de commande pour TTL-LAMa"
+urls = { "Repository" = "https://github.com/remiv1/TTL-LAMa-CLI" }
+description = "Interface en ligne de commande pour TTL-LAMa, Time To Live - Lease Access Management"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -16,6 +26,11 @@ dependencies = [
     "rich>=15,<16",
     "pyyaml>=6,<7",
 ]
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+maintainers = [
+    { name = "Rémi Verschuur", email = "rverschuur@audit-io.fr" },
+]
 
 [project.optional-dependencies]
 test = ["pytest>=9,<10", "pytest-cov>=7,<8"]
@@ -25,3 +40,6 @@ ttlama = "ttlama_cli.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ttlama_cli]
+release-date = "2026-11-15"

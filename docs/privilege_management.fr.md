@@ -71,17 +71,18 @@ L'installation doit fournir une commande stable, par exemple :
 
 L'utilisateur dédié doit pouvoir exécuter normalement `ttlama --help` sans disposer pour autant de privilèges administratifs.
 
-Depuis la racine du dépôt CLI :
+Depuis le dossier `cli/` d'une copie du dépôt :
 
 ```bash
-mkdir -p /opt/ttlama-cli
-cd /opt/ttlama-cli
+cd /path/to/TTL-LAMa/cli
 sudo python3 -m venv /opt/ttlama-cli
-sudo ./bin/python -m pip install --upgrade pip
-sudo ./bin/python -m pip install ttlama-cli
+sudo /opt/ttlama-cli/bin/python -m pip install --upgrade pip
+sudo /opt/ttlama-cli/bin/python -m pip install .
 sudo ln -sfn /opt/ttlama-cli/bin/ttlama /usr/local/bin/ttlama
 /usr/local/bin/ttlama --help
 ```
+
+Cette procédure installe les sources du dépôt dans un environnement virtuel appartenant à root. Depuis une copie mise à jour, exécutez `sudo /opt/ttlama-cli/bin/python -m pip install --force-reinstall .` pour réinstaller la CLI ; n'installez pas le paquet globalement avec `sudo pip`.
 
 ## Utilisateur système dédié
 

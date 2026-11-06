@@ -71,17 +71,18 @@ The installation must provide a stable command, for example:
 
 The dedicated user must be able to run `ttlama --help` normally without having administrative privileges.
 
-From the root of the CLI repository:
+From the `cli/` directory of the repository checkout:
 
 ```bash
-mkdir -p /opt/ttlama-cli
-cd /opt/ttlama-cli
+cd /path/to/TTL-LAMa/cli
 sudo python3 -m venv /opt/ttlama-cli
-sudo ./bin/python -m pip install --upgrade pip
-sudo ./bin/python -m pip install ttlama-cli
+sudo /opt/ttlama-cli/bin/python -m pip install --upgrade pip
+sudo /opt/ttlama-cli/bin/python -m pip install .
 sudo ln -sfn /opt/ttlama-cli/bin/ttlama /usr/local/bin/ttlama
 /usr/local/bin/ttlama --help
 ```
+
+This installs the checked-out source into a root-owned virtual environment. From an updated checkout, run `sudo /opt/ttlama-cli/bin/python -m pip install --force-reinstall .` to reinstall it; do not install the package globally with `sudo pip`.
 
 ## Dedicated System User
 
@@ -196,7 +197,7 @@ The key pair must not be reused for human administration of the server. It can b
 
 ```bash
 ssh-keygen \
-  -t ed25519 \\
+  -t ed25519 \
   -f ttlama_backend \\
   -C "TTL-LAMa backend"
 ```
