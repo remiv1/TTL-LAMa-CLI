@@ -270,6 +270,37 @@ def test_wireguard_lease_delete_returns_status(
     ))
 
 
+def test_wireguard_lease_delete_accepts_orphan_peer_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Delete accepts backend state without TTL-LAMa lease metadata."""
+    payload = {
+        "interface": "wg0",
+        "public_key": "orphan-public-key",
+        "addresses": ["10.101.0.0/24"],
+    }
+    driver = Mock(revoke_lease=Mock(return_value=RunResult(0, "", "")))
+    monkeypatch.setattr(
+        wireguard_commands,
+        "WireGuardDriver",
+        Mock(return_value=driver),
+    )
+
+    result = CliRunner().invoke(
+        app,
+        ["backend", "wg", "leases", "delete", "--lease", "-"],
+        input=json.dumps(payload),
+    )
+
+    assert result.exit_code == 0
+    driver.revoke_lease.assert_called_once_with(VPNLease(
+        lease_id="",
+        device_id="",
+        public_key="orphan-public-key",
+        addresses=("10.101.0.0/24",),
+    ))
+
+
 def test_wireguard_lease_mutation_rejects_all_interfaces(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

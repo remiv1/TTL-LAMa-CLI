@@ -47,7 +47,11 @@ def _invalid_lease_data(message: str) -> NoReturn:
     raise typer.Exit(code=1)
 
 
-def _load_lease(file_path: Path) -> tuple[str, VPNLease]:
+def _load_lease(
+    file_path: Path,
+    *,
+    require_metadata: bool = True,
+) -> tuple[str, VPNLease]:
     data = load_data_file(file_path, "lease")
     interface = data.get("interface")
     lease_id = data.get("lease_id")
@@ -57,9 +61,9 @@ def _load_lease(file_path: Path) -> tuple[str, VPNLease]:
 
     if not isinstance(interface, str) or not interface or interface == "all":
         _invalid_lease_data("'interface' must name one specific interface.")
-    if not isinstance(lease_id, str) or not lease_id:
+    if require_metadata and (not isinstance(lease_id, str) or not lease_id):
         _invalid_lease_data("'lease_id' must be a non-empty string.")
-    if not isinstance(device_id, str) or not device_id:
+    if require_metadata and (not isinstance(device_id, str) or not device_id):
         _invalid_lease_data("'device_id' must be a non-empty string.")
     if not isinstance(public_key, str) or not public_key:
         _invalid_lease_data("'public_key' must be a non-empty string.")
@@ -73,8 +77,8 @@ def _load_lease(file_path: Path) -> tuple[str, VPNLease]:
         _invalid_lease_data("'addresses' must be a list of strings.")
 
     return interface, VPNLease(
-        lease_id=lease_id,
-        device_id=device_id,
+        lease_id=lease_id if isinstance(lease_id, str) else "",
+        device_id=device_id if isinstance(device_id, str) else "",
         public_key=public_key,
         addresses=addresses,
     )
@@ -267,7 +271,7 @@ def delete_lease_command(
     :param file_path: JSON or YAML lease data path, or ``-`` for standard input.
     :type file_path: Path
     """
-    interface, lease = _load_lease(file_path)
+    interface, lease = _load_lease(file_path, require_metadata=False)
     try:
         result = WireGuardDriver(interface).revoke_lease(lease)
         if result.returncode != 0:

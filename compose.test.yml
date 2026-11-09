@@ -1,16 +1,58 @@
 services:
+  wireguard-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+      target: wireguard-backend
+    environment:
+      TTL_LAMA_TEST_WIREGUARD_INTERFACE: wg0
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - wireguard-test-ssh:/run/ttl-lama-test
+    healthcheck:
+      test: ["CMD", "ssh-keyscan", "-T", "2", "-t", "ed25519", "127.0.0.1"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
   server:
     image: ghcr.io/remiv1/ttl-lama:latest
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - "cp /etc/ttl-lama/config.yml /tmp/ttlama-config.yml && exec sh /opt/ttl-lama/src/entrypoint.sh"
+      - |
+        set -eu
+        cp /etc/ttl-lama/config.yml /tmp/ttlama-config.yml
+        mkdir -p /tmp/ttlama-ssh
+        ssh-keygen -q -t ed25519 -N "" -f /tmp/ttlama-ssh/id_ed25519
+        rm -f /run/ttl-lama-test/authorized_keys
+        cp /tmp/ttlama-ssh/id_ed25519.pub /run/ttl-lama-test/authorized_keys
+        ssh-keyscan -T 5 -t ed25519 wireguard-backend > /tmp/ttlama-ssh/known_hosts
+        cat > /tmp/ttlama-ssh/ssh_config.yml <<'EOF'
+        ssh_config:
+          host: wireguard-backend
+          port: 22
+          user: ttl-lama
+          identity_file: /tmp/ttlama-ssh/id_ed25519
+          known_hosts_file: /tmp/ttlama-ssh/known_hosts
+          connection_timeout: 10
+        EOF
+        export TTL_LAMA_SSH_CONFIG_FILE=/tmp/ttlama-ssh/ssh_config.yml
+        exec sh /opt/ttl-lama/src/entrypoint.sh
     environment:
       TTL_LAMA_CONFIG_FILE: /tmp/ttlama-config.yml
+      TTL_LAMA_SSH_CONFIG_FILE: /tmp/ttlama-ssh/ssh_config.yml
       TTL_LAMA_FLASK_ENV: development
       TTL_LAMA_ADMIN_USERNAME: cli-integration-admin
       TTL_LAMA_ADMIN_PASSWORD: cli-integration-password
       TTL_LAMA_SESSION_COOKIE_SECURE: "false"
       TTL_LAMA_ENFORCE_SECURE_CONNECTION: "false"
+    volumes:
+      - wireguard-test-ssh:/run/ttl-lama-test
+    depends_on:
+      wireguard-backend:
+        condition: service_healthy
     ports:
       - "58080:8080"
     healthcheck:
@@ -42,3 +84,6 @@ services:
     depends_on:
       server:
         condition: service_healthy
+
+volumes:
+  wireguard-test-ssh:

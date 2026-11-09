@@ -1,4 +1,58 @@
-FROM python:3.14-slim
+FROM docker.io/library/python:3.14-slim AS wireguard-backend
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        iproute2 \
+        openssh-server \
+        sudo \
+        wireguard-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/ttlama-cli
+
+COPY pyproject.toml ./
+COPY src/ ./src/
+RUN python -m pip install --no-cache-dir . \
+    && useradd --create-home --shell /bin/sh ttl-lama \
+    && printf 'ttl-lama:test-only-password\n' | chpasswd \
+    && printf 'ttl-lama ALL=(root) NOPASSWD: /usr/local/bin/ttlama\n' \
+        > /etc/sudoers.d/ttlama \
+    && chmod 0440 /etc/sudoers.d/ttlama
+
+RUN printf '%s\n' \
+        'Port 22' \
+        'AddressFamily any' \
+        'ListenAddress 0.0.0.0' \
+        'HostKey /etc/ssh/ssh_host_ed25519_key' \
+        'PubkeyAuthentication yes' \
+        'PasswordAuthentication no' \
+        'KbdInteractiveAuthentication no' \
+        'AuthenticationMethods publickey' \
+        'PermitRootLogin no' \
+        'PermitTTY no' \
+        'AllowUsers ttl-lama' \
+        'AuthorizedKeysFile /run/ttl-lama-test/authorized_keys' \
+        'StrictModes no' \
+        'UsePAM no' \
+        'AllowTcpForwarding no' \
+        'X11Forwarding no' \
+        > /etc/ssh/sshd_config \
+    && printf '%s\n' \
+        '#!/bin/sh' \
+        'set -eu' \
+        'mkdir -p /run/sshd /run/ttl-lama-test' \
+        'chmod 0777 /run/ttl-lama-test' \
+        'ssh-keygen -A' \
+        'interface=${TTL_LAMA_TEST_WIREGUARD_INTERFACE:-wg0}' \
+        'ip link add "$interface" type wireguard' \
+        'ip link set "$interface" up' \
+        'exec /usr/sbin/sshd -D -e -f /etc/ssh/sshd_config' \
+        > /usr/local/bin/test-backend-entrypoint \
+    && chmod 0755 /usr/local/bin/test-backend-entrypoint
+
+ENTRYPOINT ["/usr/local/bin/test-backend-entrypoint"]
+
+FROM docker.io/library/python:3.14-slim AS cli-tests
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

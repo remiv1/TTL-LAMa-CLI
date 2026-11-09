@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 from collections.abc import Mapping
@@ -410,7 +411,10 @@ def test_user_and_admin_resource_workflow(
     device_file = tmp_path / "device.json"
     _write_json(
         device_file,
-        {"name": device_name, "public_key": f"public-key-{uuid4().hex}"},
+        {
+            "name": device_name,
+            "public_key": base64.b64encode(os.urandom(32)).decode("ascii"),
+        },
     )
     _invoke(runner, ["user", "devices", "add", "--file", str(device_file)])
     device = _find_row(
