@@ -169,6 +169,38 @@ def test_request_api_sends_bearer_and_returns_json(
         timeout=5,
     )
 
+
+def test_request_api_uses_request_specific_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Use a request-specific timeout when one is provided."""
+    response = Mock()
+    response.status_code = 201
+    response.json.return_value = {"id": 12}
+    mocked_request = Mock(return_value=response)
+    monkeypatch.setattr(api_client, "request", mocked_request)
+
+    result = api_client.request_api(
+        ServerParameters(server_url="https://server.example", server_port=8443),
+        "test-token",
+        SpecificRequest(
+            endpoint="users/me/leases",
+            method=HTTPMethod.POST,
+            timeout=60.0,
+        ),
+    )
+
+    assert result == {"id": 12}
+    mocked_request.assert_called_once_with(
+        "POST",
+        "https://server.example:8443/api/v1/users/me/leases",
+        headers={"Authorization": "Bearer test-token"},
+        params=None,
+        json=None,
+        timeout=60.0,
+    )
+
+
 @pytest.mark.parametrize(
     "status_code, expected_exception, match",
     [

@@ -55,8 +55,11 @@ class SpecificRequest:
     :type params: Mapping[str, str | int] | None
     :param json_body: The JSON body of the request.
     :type json_body: Mapping[str, JSONValue] | None
+    :param timeout: The request timeout in seconds.
+    :type timeout: float
     """
     endpoint: str
     method: HTTPMethod = HTTPMethod.GET
     params: Mapping[str, str | int] | None = None
     json_body: Mapping[str, JSONValue] | None = None
+    timeout: float = 5.0

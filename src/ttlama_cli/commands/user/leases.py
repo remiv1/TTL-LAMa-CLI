@@ -33,6 +33,8 @@ from .. import (
 from ...exc import APIError, AuthenticationError, AuthorizationError, handle_api_error
 from ...objects import HTTPMethod, SpecificRequest
 
+PROVISIONING_REQUEST_TIMEOUT_SECONDS = 60.0
+
 app = typer.Typer(
     no_args_is_help=True,
     help="Inspect leases owned by the authenticated user.",
@@ -188,6 +190,7 @@ def create_lease(
                 method=HTTPMethod.POST,
                 endpoint="users/me/leases",
                 json_body=lease_data,
+                timeout=PROVISIONING_REQUEST_TIMEOUT_SECONDS,
             )),
             "lease",
         )
@@ -212,6 +215,7 @@ def revoke_lease(
         request_configured_api(SpecificRequest(
             method=HTTPMethod.POST,
             endpoint=f"users/me/leases/{lease_id}/revoke",
+            timeout=PROVISIONING_REQUEST_TIMEOUT_SECONDS,
         ))
     except (AuthorizationError, AuthenticationError, APIError) as error:
         handle_api_error(error)

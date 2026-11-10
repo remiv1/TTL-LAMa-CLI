@@ -42,6 +42,7 @@ services:
         exec sh /opt/ttl-lama/src/entrypoint.sh
     environment:
       TTL_LAMA_CONFIG_FILE: /tmp/ttlama-config.yml
+      TTL_LAMA_SECRET_KEY_FILE: /data/flask_secret_key
       TTL_LAMA_SSH_CONFIG_FILE: /tmp/ttlama-ssh/ssh_config.yml
       TTL_LAMA_FLASK_ENV: development
       TTL_LAMA_ADMIN_USERNAME: cli-integration-admin

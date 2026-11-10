@@ -195,7 +195,7 @@ def request_api(
             headers={"Authorization": f"Bearer {token}"},
             params=specific_request.params,
             json=specific_request.json_body,
-            timeout=5,
+            timeout=specific_request.timeout,
         )
     except RequestException as error:
         raise APIError("Impossible de joindre l’API TTL-LAMa.") from error
