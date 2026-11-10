@@ -242,6 +242,8 @@ ssh_config:
 
 The application must not disable server identity verification to simplify deployment. The expected host key must be provisioned by the operator.
 
+When rotating a host key, verify the new fingerprint through an independent channel, then replace the matching entry in `ssh_known_hosts` before resuming operations. Do not accept an unverified value from `ssh-keyscan`. When rotating the client key, first install the new public key with the same restrictions in `authorized_keys`, deploy the new private key as a secret, and verify a connection; then remove the old public key and secret. If a key is compromised, remove its public key from `authorized_keys` immediately and replace the application-side secret.
+
 ### Separating Secrets from Configuration
 
 Configuration and secrets have different lifecycles. The recommended layout is conceptually:

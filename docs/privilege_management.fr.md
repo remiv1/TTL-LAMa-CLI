@@ -242,6 +242,8 @@ ssh_config:
 
 L'application ne doit pas désactiver la vérification de l'identité du serveur pour faciliter le déploiement. La clé d'hôte attendue doit être provisionnée par l'opérateur.
 
+Lors d'une rotation de clé d'hôte, vérifiez la nouvelle empreinte par un canal indépendant, puis remplacez l'entrée correspondante dans `ssh_known_hosts` avant de redémarrer les opérations. N'acceptez pas sans vérification une valeur issue de `ssh-keyscan`. Lors d'une rotation de la clé cliente, installez d'abord la nouvelle clé publique avec les mêmes restrictions dans `authorized_keys`, déployez la nouvelle clé privée comme secret et vérifiez une connexion; retirez ensuite l'ancienne clé publique et l'ancien secret. En cas de compromission, retirez immédiatement la clé publique concernée de `authorized_keys` et remplacez le secret côté application.
+
 ### Séparation des secrets et de la configuration
 
 La configuration et les secrets ont des cycles de vie différents. La disposition recommandée est conceptuellement :
