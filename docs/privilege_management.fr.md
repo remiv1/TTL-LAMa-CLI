@@ -74,12 +74,13 @@ L'utilisateur dédié doit pouvoir exécuter normalement `ttlama --help` sans di
 Depuis le dossier `cli/` d'une copie du dépôt :
 
 ```bash
-cd /path/to/TTL-LAMa/cli
-sudo python3 -m venv /opt/ttlama-cli
-sudo /opt/ttlama-cli/bin/python -m pip install --upgrade pip
-sudo /opt/ttlama-cli/bin/python -m pip install .
-sudo ln -sfn /opt/ttlama-cli/bin/ttlama /usr/local/bin/ttlama
-/usr/local/bin/ttlama --help
+sudo mkdir -p /opt/ttlama
+sudo python3 -m venv /opt/ttlama/venv
+sudo /opt/ttlama/venv/bin/pip install ttlama-cli
+sudo ln -sfn /opt/ttlama/bin/ttlama /usr/bin/ttlama
+sudo chown -R root:root /opt/lltama/venv
+sudo chmod -R a+rX /opt/ttlama/venv
+ttlama --help
 ```
 
 Cette procédure installe les sources du dépôt dans un environnement virtuel appartenant à root. Depuis une copie mise à jour, exécutez `sudo /opt/ttlama-cli/bin/python -m pip install --force-reinstall .` pour réinstaller la CLI ; n'installez pas le paquet globalement avec `sudo pip`.
@@ -143,6 +144,7 @@ ttlama ALL=(root) NOPASSWD: TTLAMA_BACKEND
 Les permissions doivent être limitées aux opérations nécessaires au backend. Une configuration dédiée peut être placée dans `/etc/sudoers.d/ttlama`. Cette configuration doit être validée avec :
 
 ```bash
+sudo chmod 440 /etc/sudoers.d/ttlama
 sudo visudo -cf /etc/sudoers.d/ttlama
 ```
 
