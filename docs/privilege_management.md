@@ -140,9 +140,10 @@ Cmnd_Alias TTLAMA_BACKEND = /usr/local/bin/ttlama backend *
 ttlama ALL=(root) NOPASSWD: TTLAMA_BACKEND
 ```
 
-Permissions must be limited to the operations required by the backend. A dedicated configuration can be placed in `/etc/sudoers.d/ttlama`. Validate it with:
+Permissions must be limited to the operations required by the backend. A dedicated configuration can be placed in `/etc/sudoers.d/ttlama`. Set its permissions and validate it with:
 
 ```bash
+sudo chmod 440 /etc/sudoers.d/ttlama
 sudo visudo -cf /etc/sudoers.d/ttlama
 ```
 
@@ -198,7 +199,7 @@ The key pair must not be reused for human administration of the server. It can b
 ```bash
 ssh-keygen \
   -t ed25519 \
-  -f ttlama_backend \\
+  -f ttlama_backend \
   -C "TTL-LAMa backend"
 ```
 
@@ -306,3 +307,64 @@ A compromise at one level should not automatically grant access to the entire ne
 - The SSH key is not a human administration key.
 - The SSH user is not `root`.
 - `sudo` does not authorize general administrative commands.
+- The VPN driver never constructs a command to pass to a shell.
+- Only the parameters strictly required by the backend are accepted.
+- The `ttlama` executable and the code it loads during privilege escalation are not modifiable by the dedicated SSH user.
+
+## WireGuard
+
+For WireGuard, the local CLI exposes the TTL-LAMa operations:
+
+```bash
+sudo -n ttlama backend wg leases ...
+```
+
+The privileged command is the TTL-LAMa CLI itself. The `WireGuardDriver` does not perform further privilege escalation and directly runs the required WireGuard primitives.
+
+The application sends the lease document over SSH standard input using `--lease -`; the JSON/YAML content is not appended to the remote command. The complete document includes the target interface, lease ID, device ID, public key, and allowed networks. Example invocation from a client that already has the document in memory:
+
+```bash
+printf '%s' "$lease_json" | ssh -T vpn-admin@vpn-host \
+  'sudo -n ttlama backend wg leases apply --lease -'
+```
+
+`get` returns the peer's JSON/YAML state; `--check` can be used to distinguish an absent peer by its exit code. `apply` and `delete` return a JSON status. Errors are written to stderr and result in a non-zero exit code.
+
+The driver then translates lease operations into the corresponding WireGuard primitives, for example:
+
+```text
+TTL-LAMa lease
+      │
+      ▼
+WireGuardDriver
+      │
+      ▼
+WireGuard peer
+```
+
+The CLI and driver must not handle the WireGuard interface's private key. Reading state for reconciliation must be limited to the information TTL-LAMa needs, notably peer identities and their allowed networks.
+
+## Extending to Other VPN Backends
+
+Privilege management is intentionally separate from the VPN backend. The same model can be used with other drivers:
+
+```text
+Application
+    │
+    └── SSH
+         │
+         ▼
+dedicated user
+         │
+         ▼
+sudo -n ttlama backend <backend> leases ...
+         │
+         ▼
+VPNDriver
+         │
+         ├── WireGuardDriver
+         ├── OpenVPNDriver
+         └── future driver
+```
+
+Each driver defines the local operations required by its VPN manager, while the SSH transport and its privilege model remain common.
