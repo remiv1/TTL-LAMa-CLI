@@ -174,17 +174,21 @@ The backend configuration remains separate, in `/etc/ttl-lama/backend_config.yml
 ```yaml
 backend:
   wireguard:
-    interfaces:
-      - name: wg0
-        description: Main WireGuard interface
+    profiles:
+      - name: Main access
+        interface: wg0
+        endpoint: vpn.example.com:51820
+        address_pools: [10.250.0.0/24]
         networks:
-          - 10.0.0.1/24
+          - 10.0.0.0/24
         public_key: your_public_key_here
         default_duration: 8h
         maximum_duration: 24h
 ```
 
 This separation distinguishes:
+
+TTL-LAMa only manages WireGuard peers and leases. Do not grant the SSH account nftables permissions. Firewall proposals are printed by the installer for the router administrator; they are never applied or maintained by lease operations.
 
 - `ssh_config.yml`: **_How should the host be reached?_**
 - `backend_config.yml`: **_Which infrastructure should be managed?_**

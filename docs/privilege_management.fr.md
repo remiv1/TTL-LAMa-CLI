@@ -176,17 +176,21 @@ La configuration du backend reste indépendante dans `/etc/ttl-lama/backend_conf
 ```yaml
 backend:
   wireguard:
-    interfaces:
-      - name: wg0
-        description: Interface WireGuard principale
+    profiles:
+      - name: Accès principal
+        interface: wg0
+        endpoint: vpn.example.com:51820
+        address_pools: [10.250.0.0/24]
         networks:
-          - 10.0.0.1/24
+          - 10.0.0.0/24
         public_key: your_public_key_here
         default_duration: 8h
         maximum_duration: 24h
 ```
 
 Cette séparation distingue :
+
+TTL-LAMa ne gère que les pairs WireGuard et les baux. N’accordez aucune permission nftables au compte SSH. L’installeur affiche des propositions destinées à l’administrateur du routeur ; les opérations de baux ne les appliquent jamais.
 
 - `ssh_config.yml` : **_Comment contacter l'hôte ?_**
 - `backend_config.yml` : **_Quelles infrastructures administrer ?_**

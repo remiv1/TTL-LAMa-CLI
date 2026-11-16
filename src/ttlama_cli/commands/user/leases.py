@@ -16,6 +16,9 @@
 """
 from __future__ import annotations
 
+import base64
+import os
+import subprocess
 from pathlib import Path
 
 import typer
@@ -172,6 +175,66 @@ def get_lease(
         handle_api_error(error)
         return
     _display_lease(lease, json_output=json_output, yaml_output=yaml_output)
+
+
+@app.command("configuration")
+def get_configuration(
+    lease_id: int = typer.Option(..., "--id", help="Active lease ID."),
+    private_key_file: Path | None = typer.Option(
+        None, "--private-key-file",
+        help="Local WireGuard private key.",
+    ),
+    output: Path | None = typer.Option(
+        None, "--output",
+        help="New private configuration file to create.",
+    ),
+    json_output: bool = typer.Option(False, "--json", help="Output public parameters as JSON."),
+    yaml_output: bool = typer.Option(False, "--yaml", help="Output public parameters as YAML."),
+) -> None:
+    """Retrieve public parameters or assemble a private configuration locally.
+
+    :param lease_id: Identifier of the owned active lease.
+    :param private_key_file: Local key, never sent to the server.
+    :param output: New configuration path, created with owner-only permissions.
+    :param json_output: Output public parameters as JSON.
+    :param yaml_output: Output public parameters as YAML.
+    """
+    validate_output_options(json_output, yaml_output)
+    if (private_key_file is None) != (output is None) or (output and (json_output or yaml_output)):
+        typer.echo("Use --private-key-file with --output, without --json or --yaml.", err=True)
+        raise typer.Exit(code=1)
+    try:
+        parameters = resource_object(request_configured_api(SpecificRequest(
+            method=HTTPMethod.GET, endpoint=f"users/me/leases/{lease_id}/configuration",
+        )), "configuration")
+    except (AuthorizationError, AuthenticationError, APIError) as error:
+        handle_api_error(error)
+        return
+    if output is None or private_key_file is None:
+        display_structured_output(parameters, json_output=not yaml_output, yaml_output=yaml_output)
+        return
+    try:
+        private_key = private_key_file.read_text(encoding="ascii").strip()
+        if len(base64.b64decode(private_key, validate=True)) != 32:
+            raise ValueError("Invalid key length")
+        public_key = subprocess.run(
+            ["wg", "pubkey"], input=private_key + "\n", text=True, capture_output=True, check=True,
+        ).stdout.strip()
+        if public_key != parameters.get("device_public_key"):
+            raise ValueError("The local key does not match the device")
+        template = parameters.get("configuration_template")
+        if not isinstance(template, str) or template.count("REPLACE_WITH_LOCAL_PRIVATE_KEY") != 1:
+            raise ValueError("Invalid configuration template")
+        descriptor = os.open(output, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as configuration:
+            configuration.write(template.replace("REPLACE_WITH_LOCAL_PRIVATE_KEY", private_key))
+    except (OSError, ValueError, subprocess.SubprocessError):
+        typer.echo(
+            "Cannot export configuration: check the local key, wg availability and unused output path.", # pylint: disable=C0301
+            err=True,
+        )
+        raise typer.Exit(code=1) from None
+    typer.echo("WireGuard configuration created locally.")
 
 
 @app.command("create")

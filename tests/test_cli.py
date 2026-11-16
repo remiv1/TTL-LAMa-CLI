@@ -20,6 +20,32 @@ def test_help_is_available() -> None:
     assert result.exit_code == 0
     assert "Usage:" in result.output
 
+@pytest.mark.parametrize("address", ["not-a-cidr", "10.0.0.2/99", "fd42::2/129"])
+def test_wireguard_rejects_invalid_addresses_before_driver_execution(
+    monkeypatch: pytest.MonkeyPatch, address: str,
+) -> None:
+    """Reject invalid networks before any privileged WireGuard operation."""
+    driver = Mock()
+    factory = Mock(return_value=driver)
+    monkeypatch.setattr(wireguard_commands, "WireGuardDriver", factory)
+    result = CliRunner().invoke(
+        app,
+        ["backend", "wg", "leases", "apply", "--lease", "-"],
+        input=json.dumps(
+            {
+                "interface": "wg0",
+                "lease_id": "lease",
+                "device_id": "device",
+                "public_key": "public-key",
+                "addresses": [address],
+            }
+        )
+    )
+    assert result.exit_code == 1
+    assert "valid IPv4 or IPv6 CIDRs" in result.output
+    factory.assert_not_called()
+
+
 def test_internal_login_help_is_available() -> None:
     """Test that the help option is available for the internal login command."""
     result = CliRunner().invoke(

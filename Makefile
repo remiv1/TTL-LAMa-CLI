@@ -21,7 +21,7 @@ build:
 	$(PYTHON) -m build --outdir "$(DIST_DIR)" .
 
 unit:
-	$(PYTHON) -m pytest tests/ --ignore=tests/integration $(TEST_ARGS)
+	PYTHONPATH="$(CURDIR)/src$${PYTHONPATH:+:$$PYTHONPATH}" $(PYTHON) -m pytest tests/ --ignore=tests/integration $(TEST_ARGS)
 
 integration:
 	./scripts/test-integration.sh $(INTEGRATION_ARGS)

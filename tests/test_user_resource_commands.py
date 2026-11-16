@@ -1,6 +1,7 @@
 """Tests for authenticated device and lease commands."""
 
 import json
+import base64
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -47,6 +48,36 @@ def _mock_user_api(
 
 def _request_at(mock: Mock, index: int = -1) -> SpecificRequest:
     return mock.call_args_list[index].kwargs["specific_request"]
+
+
+def test_configuration_exports_local_key_without_sending_or_printing_it(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    """Assemble a private file locally and refuse to overwrite an existing file."""
+    private_key = base64.b64encode(bytes(range(32))).decode("ascii")
+    key_path = tmp_path / "private.key"
+    key_path.write_text(private_key, encoding="ascii")
+    output = tmp_path / "client.conf"
+    parameters = {
+        "device_public_key": "device-key",
+        "configuration_template": "[Interface]\nPrivateKey = REPLACE_WITH_LOCAL_PRIVATE_KEY\n",
+    }
+    request_api = Mock(return_value=parameters)
+    _mock_user_api(monkeypatch, request_api)
+    command = Mock(return_value=Mock(stdout="device-key\n"))
+    monkeypatch.setattr("ttlama_cli.commands.user.leases.subprocess.run", command)
+    arguments = ["user", "leases", "configuration", "--id", "9",
+                 "--private-key-file", str(key_path), "--output", str(output)]
+    result = CliRunner().invoke(app, arguments)
+    assert result.exit_code == 0, result.output
+    assert private_key in output.read_text(encoding="utf-8")
+    assert output.stat().st_mode & 0o777 == 0o600
+    assert private_key not in result.output
+    assert _request_at(request_api).endpoint == "users/me/leases/9/configuration"
+    assert _request_at(request_api).json_body is None
+    assert CliRunner().invoke(app, arguments).exit_code == 1
+    command.return_value.stdout = "another-key\n"
+    assert CliRunner().invoke(app, arguments).exit_code == 1
 
 
 def test_device_list_and_get_support_json_and_yaml(

@@ -13,7 +13,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3.12",
 ]
-version = "0.1.0"
+version = "0.1.1"
 urls = { "Repository" = "https://github.com/remiv1/TTL-LAMa-CLI" }
 description = "Interface en ligne de commande pour TTL-LAMa, Time To Live - Lease Access Management"
 readme = "README.md"

@@ -21,7 +21,7 @@ The CLI is under development. It provides server configuration, internal and OID
 | --- | --- | --- |
 | `config` | `set-server` | — |
 | `auth` | `login internal`, `login oidc`, `logout`, `password-chg`, `status` | — |
-| `user` | `get`, `profiles ls`, `profiles get`, `devices ls/get/add/delete`, `leases ls/get/create/revoke` | — |
+| `user` | `get`, `profiles ls`, `profiles get`, `devices ls/get/add/delete`, `leases ls/get/create/revoke/configuration` | — |
 | `global-config` | `get`, `diff`, `validate`, `apply` | — |
 | `admin users` | `ls`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
 | `admin devices` | `ls`, `get`, `update`, `block`, `delete` | — |
@@ -31,6 +31,31 @@ The CLI is under development. It provides server configuration, internal and OID
 | `backend openvpn leases` | — | `ls`, `get`, `apply`, `delete` |
 
 The `backend wg leases` commands inspect or mutate a local WireGuard interface; they do not provide scheduled reconciliation with the server. See the [command reference](docs/cli-reference.md) for exact arguments and input requirements.
+
+Profiles may share the same interface with independent destinations and durations.
+Their API policy contains `lease_target`, `address_pools`, `endpoint` and the server
+`public_key`. Client host addresses are allocated per device/interface; profile
+destinations are not passed as server-side peer `AllowedIPs`.
+
+Retrieve public configuration parameters or assemble a private file locally:
+
+```sh
+ttlama user leases configuration --id 9 --json
+ttlama user leases configuration --id 9 --private-key-file ./client.key --output ./client.conf
+```
+
+Local export requires `wg pubkey` to verify that the private key matches the
+registered device. The key is never sent to the API or printed. The output is a
+new owner-only file and existing files are not overwritten. The browser also
+supports local assembly from a key file or an existing WireGuard configuration.
+A downloaded configuration contains a snapshot of routing destinations from the
+peer's active leases; it does not refresh or expire itself.
+
+TTL-LAMa manages leases and peers only, never nftables at runtime. The installer
+prints firewall integration proposals and can include commented rules in its
+host preparation script; the router administrator owns firewall configuration.
+Client `AllowedIPs` are not server-enforced destination authorization. With
+several active profiles, the peer remains until the last lease ends.
 
 Administrators can list leases using any combination of `--user`, `--device`, `--profile`, and `--status` (`active`, `expired`, or `revoked`). `get` displays the complete lease, including its derived status and lifecycle timestamps. `revoke` asks for confirmation before revoking the lease; its history is retained.
 
@@ -146,7 +171,7 @@ python -m pytest tests/
 
 ## Integration tests
 
-The launcher starts an ephemeral instance from `ghcr.io/remiv1/ttl-lama:latest`, then runs authentication commands against the real server:
+The launcher builds a local server image from the repository, starts an ephemeral instance, then runs commands against that server:
 
 ```bash
 ./scripts/test-integration.sh

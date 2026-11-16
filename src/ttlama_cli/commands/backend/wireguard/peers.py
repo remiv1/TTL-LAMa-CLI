@@ -20,6 +20,8 @@
 """
 from __future__ import annotations
 
+from ipaddress import ip_network
+
 from pathlib import Path
 from typing import NoReturn
 
@@ -75,6 +77,10 @@ def _load_lease(
     )
     if len(addresses) != len(addresses_data):
         _invalid_lease_data("'addresses' must be a list of strings.")
+    try:
+        addresses = tuple(str(ip_network(address, strict=False)) for address in addresses)
+    except ValueError:
+        _invalid_lease_data("'addresses' must contain valid IPv4 or IPv6 CIDRs.")
 
     return interface, VPNLease(
         lease_id=lease_id if isinstance(lease_id, str) else "",

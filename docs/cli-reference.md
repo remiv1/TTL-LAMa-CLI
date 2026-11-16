@@ -1012,6 +1012,17 @@ ttlama user leases get [OPTIONS]
 * `--yaml`: Output the lease as YAML.
 * `--help`: Show this message and exit.
 
+#### `ttlama user leases configuration`
+
+Retrieve public client parameters for an owned, active, provisioned lease.
+
+```console
+ttlama user leases configuration --id ID [--json | --yaml]
+ttlama user leases configuration --id ID --private-key-file PATH --output NEW_PATH
+```
+
+Local export requires `wg pubkey`, checks that the key matches the registered device and creates a new file with mode `0600`. Existing files are not overwritten and the private key is never sent to the server or printed. The template contains routing destinations of the shared peer's active leases, not an external firewall authorization. A downloaded configuration is a snapshot.
+
 #### `ttlama user leases create`
 
 Create a lease from a JSON or YAML file.

@@ -21,7 +21,7 @@ La CLI est en développement. Elle fournit la configuration du serveur, l’auth
 | --- | --- | --- |
 | `config` | `set-server` | — |
 | `auth` | `login internal`, `login oidc`, `logout`, `password-chg`, `status` | — |
-| `user` | `get`, `profiles ls`, `profiles get`, `devices ls/get/add/delete`, `leases ls/get/create/revoke` | — |
+| `user` | `get`, `profiles ls`, `profiles get`, `devices ls/get/add/delete`, `leases ls/get/create/revoke/configuration` | — |
 | `global-config` | `get`, `diff`, `validate`, `apply` | — |
 | `admin users` | `ls`, `get`, `create`, `update`, `delete`, `assign`, `unassign` | — |
 | `admin devices` | `ls`, `get`, `update`, `block`, `delete` | — |
@@ -31,6 +31,19 @@ La CLI est en développement. Elle fournit la configuration du serveur, l’auth
 | `backend openvpn leases` | — | `ls`, `get`, `apply`, `delete` |
 
 Les commandes `backend wg leases` inspectent ou modifient une interface WireGuard locale ; elles n’effectuent pas de réconciliation périodique avec le serveur. Voir la [référence des commandes](./cli-reference.md) pour les arguments et les formats d’entrée exacts.
+
+### Configuration WireGuard cliente
+
+Plusieurs profils peuvent partager une interface avec des durées et destinations distinctes. Leur politique API comporte `lease_target`, `address_pools`, `endpoint` et la clé publique serveur `public_key`. Les adresses VPN sont allouées de façon persistante par appareil/interface.
+
+```sh
+ttlama user leases configuration --id 9 --json
+ttlama user leases configuration --id 9 --private-key-file ./client.key --output ./client.conf
+```
+
+L’export local utilise `wg pubkey` pour vérifier la clé privée, qui n’est ni envoyée au serveur ni affichée. Le nouveau fichier est privé et un fichier existant n’est jamais écrasé. Le navigateur propose aussi un assemblage local depuis une clé ou une configuration existante. Le fichier téléchargé représente les destinations des baux actifs à cet instant ; il ne se rafraîchit pas et n’expire pas automatiquement.
+
+TTL-LAMa gère les baux et pairs, jamais nftables au runtime. L’installeur affiche des propositions de règles et propose leur inclusion commentée dans le script, sans les appliquer. Le pare-feu reste sous la responsabilité de l’administrateur du routeur. Les `AllowedIPs` clientes ne garantissent pas les restrictions de destination. Un pair partagé reste présent jusqu’à la fin du dernier bail.
 
 Les administrateurs peuvent lister les baux en combinant `--user`, `--device`, `--profile` et `--status` (`active`, `expired` ou `revoked`). `get` affiche tous les champs du bail, dont son état calculé et ses dates. `revoke` demande une confirmation avant la révocation; l’historique est conservé.
 

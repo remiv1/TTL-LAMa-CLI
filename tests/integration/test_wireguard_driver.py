@@ -57,10 +57,15 @@ def test_create_lease(
         ),
     )
 
+@pytest.mark.parametrize("addresses", [
+    ("10.102.0.0/24", "10.103.0.0/24"),
+    ("10.250.0.2/32", "fd42:250::2/128"),
+])
 def test_apply_lease_replaces_addresses(
     driver: WireGuardDriver,
     interface: str,
     public_key: str,
+    addresses: tuple[str, ...],
 ) -> None:
     """Test that applying a VPN lease replaces the existing addresses."""
     initial = VPNLease(
@@ -76,10 +81,7 @@ def test_apply_lease_replaces_addresses(
         lease_id="lease-1",
         device_id="device-1",
         public_key=public_key,
-        addresses=(
-            "10.102.0.0/24",
-            "10.103.0.0/24",
-        ),
+        addresses=addresses,
     )
 
     result = driver.apply_lease(updated)
@@ -88,10 +90,7 @@ def test_apply_lease_replaces_addresses(
     assert driver.get_lease(public_key) == VPNLeaseState(
         interface=interface,
         identity=public_key,
-        addresses=(
-            "10.102.0.0/24",
-            "10.103.0.0/24",
-        ),
+        addresses=addresses,
     )
 
 def test_revoke_lease(

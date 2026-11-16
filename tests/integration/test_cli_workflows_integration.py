@@ -180,6 +180,9 @@ def _create_profile(
             "default_duration": "1h",
             "maximum_duration": "4h",
             "lease_target": "wg0",
+            "address_pools": ["10.250.0.0/24"],
+            "endpoint": "vpn.example.com:51820",
+            "public_key": "REPLACE_WITH_WIREGUARD_PUBLIC_KEY",
             "networks": ["10.0.0.0/24"],
         },
     )
@@ -380,6 +383,15 @@ def test_user_and_admin_resource_workflow(
     profile_name = f"cli-resource-profile-{uuid4().hex[:12]}"
     profile = _create_profile(runner, tmp_path, profile_name)
     profile_id = _int_field(profile, "id")
+    shared_profile_name = f"cli-shared-profile-{uuid4().hex[:12]}"
+    shared_profile = _create_profile(runner, tmp_path, shared_profile_name)
+    shared_profile_id = _int_field(shared_profile, "id")
+    destinations_file = tmp_path / "shared-destinations.json"
+    _write_json(destinations_file, {"networks": ["192.0.2.0/24"]})
+    _invoke(runner, ["admin", "profiles", "update", "--profile", str(shared_profile_id),
+                     "--file", str(destinations_file)])
+    _invoke(runner, ["admin", "users", "assign", "--user", user_id,
+                     "--profile", str(shared_profile_id)])
     _invoke(
         runner,
         [
@@ -468,11 +480,35 @@ def test_user_and_admin_resource_workflow(
         ),
     )
     assert first_lease_details["status"] == "active"
+    first_parameters = cast(dict[str, object], _json_value(_invoke(
+        runner, ["user", "leases", "configuration", "--id", str(first_lease_id), "--json"],
+    )))
+    shared_file = tmp_path / "shared-lease.json"
+    _write_json(shared_file, {"device_id": device_id, "profile_id": shared_profile_id})
+    _invoke(runner, ["user", "leases", "create", "--file", str(shared_file)])
+    shared_lease = _find_row(
+        _json_rows(_invoke(runner, ["user", "leases", "ls", "--json"])),
+        "profile_id", shared_profile_id,
+    )
+    shared_lease_id = _int_field(shared_lease, "id")
+    shared_parameters = cast(dict[str, object], _json_value(_invoke(
+        runner, ["user", "leases", "configuration", "--id", str(shared_lease_id), "--json"],
+    )))
+    assert shared_parameters["addresses"] == first_parameters["addresses"]
+    assert shared_parameters["allowed_ips"] == ["10.0.0.0/24", "192.0.2.0/24"]
+    assert shared_parameters["active_lease_ids"] == [first_lease_id, shared_lease_id]
     _invoke(
         runner,
         ["user", "leases", "revoke", "--id", str(first_lease_id)],
         input_text="y\n",
     )
+    remaining = cast(dict[str, object], _json_value(_invoke(
+        runner, ["user", "leases", "configuration", "--id", str(shared_lease_id), "--json"],
+    )))
+    assert remaining["addresses"] == first_parameters["addresses"]
+    assert remaining["allowed_ips"] == ["192.0.2.0/24"]
+    assert remaining["active_lease_ids"] == [shared_lease_id]
+    _invoke(runner, ["user", "leases", "revoke", "--id", str(shared_lease_id)], input_text="y\n")
 
     _invoke(runner, ["user", "leases", "create", "--file", str(lease_file)])
     active_lease = _find_row(
@@ -554,6 +590,8 @@ def test_user_and_admin_resource_workflow(
         ["admin", "profiles", "delete", "--profile", str(profile_id)],
         input_text=f"{profile_name}\n",
     )
+    _invoke(runner, ["admin", "profiles", "delete", "--profile", str(shared_profile_id)],
+            input_text=f"{shared_profile_name}\n")
 
 
 def test_global_configuration_workflow_applies_only_inside_compose(

@@ -3,6 +3,11 @@
 # default_duration cannot exceed maximum_duration. networks is a non-empty
 # list of CIDRs (IPv4 or IPv6).
 name: office-access
+lease_target: wg0
+endpoint: vpn.example.com:51820
+public_key: REPLACE_WITH_WIREGUARD_PUBLIC_KEY
+address_pools:
+  - 10.250.0.0/24
 default_duration: 1h
 maximum_duration: 8h
 networks:
