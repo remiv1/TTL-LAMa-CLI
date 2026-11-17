@@ -94,10 +94,17 @@ prepare_environment() {
     printf "${RED}%s${RESET}\n" "Podman is not installed."
     exit 1
   fi
-  ${COMPOSE[@]} up -d server > "$LOG_FILE" 2>&1
+  printf "${GREEN}%s${RESET}\n" "Building WireGuard backend image..."
+  if ! "${COMPOSE[@]}" build wireguard-backend > "$LOG_FILE" 2>&1; then
+    printf "${RED}%s${RESET}\n" "Failed to build WireGuard backend image. See $LOG_FILE for details."
+    cat "$LOG_FILE"
+    rm -f "$LOG_FILE"
+    exit 1
+  fi
+  "${COMPOSE[@]}" up -d server >> "$LOG_FILE" 2>&1
 
   if (( $? != 0 )); then
-    printf "${RED}%s${RESET}\n" "Failed to pull server image. See $LOG_FILE for details."
+    printf "${RED}%s${RESET}\n" "Failed to start server. See $LOG_FILE for details."
     cat "$LOG_FILE"
     rm -f "$LOG_FILE"
     exit 1

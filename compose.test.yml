@@ -1,5 +1,7 @@
 services:
   wireguard-backend:
+    image: localhost/ttl-lama-cli-wireguard-backend:test
+    oom_score_adj: ${TTL_LAMA_TEST_OOM_SCORE_ADJ:-0}
     build:
       context: .
       dockerfile: Dockerfile.test
@@ -18,11 +20,7 @@ services:
       start_period: 5s
 
   server:
-    image: localhost/ttl-lama:cli-test
-    build:
-      context: ..
-      dockerfile: src/Dockerfile
-      target: runtime
+    image: ghcr.io/remiv1/ttl-lama:latest
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
@@ -53,6 +51,7 @@ services:
       TTL_LAMA_ADMIN_PASSWORD: cli-integration-password
       TTL_LAMA_SESSION_COOKIE_SECURE: "false"
       TTL_LAMA_ENFORCE_SECURE_CONNECTION: "false"
+    oom_score_adj: ${TTL_LAMA_TEST_OOM_SCORE_ADJ:-0}
     volumes:
       - wireguard-test-ssh:/run/ttl-lama-test
     depends_on:
@@ -74,7 +73,9 @@ services:
       start_period: 5s
 
   cli-tests:
+    image: localhost/ttl-lama-cli-tests:test
     user: "0"
+    oom_score_adj: ${TTL_LAMA_TEST_OOM_SCORE_ADJ:-0}
     build:
       context: .
       dockerfile: Dockerfile.test
